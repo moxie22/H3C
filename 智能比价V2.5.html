@@ -1,0 +1,3051 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能比价 V2.5 - 供应链管理平台</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;
+      font-size:14px; color:#1a1a1a; background:#f5f7fa; overflow:hidden; height:100vh;
+    }
+    .layout { display:flex; height:100vh; }
+    /* Sidebar */
+    .sidebar { width:220px; background:#fff; border-right:1px solid #e8e8e8; display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+    .sidebar-logo { padding:16px 20px; display:flex; align-items:center; gap:10px; cursor:pointer; flex-shrink:0; }
+    .sidebar-logo-img { width:32px; height:32px; object-fit:contain; }
+    .sidebar-logo-text { font-size:14px; font-weight:600; color:#1a1a1a; line-height:1.3; }
+    .sidebar-logo-sub { font-size:11px; color:#888; font-weight:400; }
+    .sidebar-menu { flex:1; padding:4px 0; overflow-y:auto; }
+    .menu-item { display:flex; align-items:center; gap:10px; padding:10px 20px; color:#555; cursor:pointer; transition:all .2s; user-select:none; position:relative; }
+    .menu-item:hover { color:#1677ff; background:#f0f6ff; }
+    .menu-item.active { color:#1677ff; background:#e6f4ff; border-right:3px solid #1677ff; }
+    .menu-icon { width:18px; height:18px; flex-shrink:0; opacity:.85; }
+    .menu-text { font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .menu-arrow { width:12px; height:12px; margin-left:auto; flex-shrink:0; transition:transform .2s; opacity:.45; }
+    .menu-item.expanded>.menu-arrow { transform:rotate(180deg); }
+    .submenu { display:none; background:#fafbfc; }
+    .submenu.show { display:block; }
+    .submenu-item { display:flex; align-items:center; justify-content:space-between; padding:9px 20px 9px 48px; color:#666; cursor:pointer; font-size:13px; transition:all .15s; }
+    .submenu-item:hover { color:#1677ff; background:#f0f6ff; }
+    .sidebar-footer { padding:10px 16px; border-top:1px solid #eee; font-size:11px; color:#bbb; text-align:center; flex-shrink:0; }
+    /* Main */
+    .main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+    .header { height:50px; background:#fff; border-bottom:1px solid #e8e8e8; display:flex; align-items:center; padding:0 20px; flex-shrink:0; gap:12px; }
+    .header-tab { padding:5px 18px; font-size:13.5px; color:#666; border-bottom:2px solid transparent; cursor:pointer; transition:all .15s; }
+    .header-tab.active { color:#1677ff; border-bottom-color:#1677ff; font-weight:500; }
+    .header-tab-add { width:24px; height:24px; border-radius:4px; border:1px dashed #ccc; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#999; font-size:16px; margin-left:4px; }
+    .header-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+    .header-icon-btn { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; }
+    .header-icon-btn:hover { background:#f5f5f5; }
+    .header-ai-btn { display:flex; align-items:center; gap:6px; padding:5px 14px; border-radius:18px; cursor:pointer; font-size:13px; color:#fff; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; font-family:inherit; transition:all .2s; white-space:nowrap; }
+    .header-ai-btn:hover { background:linear-gradient(135deg,#4f46e5,#7c3aed); box-shadow:0 2px 8px rgba(99,102,241,.35); }
+    .header-ai-btn .ai-dot { width:7px; height:7px; border-radius:50%; background:#34d399; animation:ai-pulse 2s infinite; flex-shrink:0; }
+    @keyframes ai-pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,.5);} 50%{opacity:.7;box-shadow:0 0 0 4px rgba(52,211,153,0);} }
+    .header-user { display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13.5px; color:#333; }
+    .user-avatar { width:28px; height:28px; border-radius:50%; background:#e8e8e8; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    /* Content */
+    .content { flex:1; overflow-y:auto; padding:16px 24px; background:#f5f7fa; }
+    .breadcrumb { display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:13.5px; }
+    .breadcrumb-back { width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid #d9d9d9; color:#555; flex-shrink:0; transition:all .15s; }
+    .breadcrumb-back:hover { border-color:#1677ff; color:#1677ff; }
+    .breadcrumb-link { color:#1677ff; cursor:pointer; }
+    .breadcrumb-sep { color:#bbb; }
+    .breadcrumb-current { color:#333; font-weight:500; }
+    .action-bar { display:flex; justify-content:flex-end; gap:10px; margin-bottom:16px; }
+    .btn { padding:6px 16px; border-radius:6px; font-size:13.5px; cursor:pointer; border:1px solid #d9d9d9; background:#fff; color:#333; display:inline-flex; align-items:center; gap:4px; transition:all .15s; white-space:nowrap; font-family:inherit; }
+    .btn:hover { border-color:#1677ff; color:#1677ff; }
+    .btn-doc { background:#fff; border-color:#e8e8e8; color:#666; font-size:13px; }
+    .btn-doc:hover { border-color:#1677ff; color:#1677ff; background:#f0f6ff; }
+    .title-card { background:#fff; border-radius:8px; padding:18px 22px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    .title-row { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+    .page-title { font-size:17px; font-weight:600; color:#1a1a1a; }
+    .status-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:20px; font-size:12px; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    .status-dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .page-code { font-size:13.5px; color:#666; }
+    .title-sub { font-size:13px; color:#888; margin-top:4px; }
+    .info-section { background:#fff; border-radius:8px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.04); overflow:hidden; }
+    .info-header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f0f0f0; }
+    .info-title { font-size:14.5px; font-weight:600; color:#1a1a1a; }
+    .expand-btn { font-size:13px; color:#1677ff; cursor:pointer; display:flex; align-items:center; gap:2px; }
+    .info-table { width:100%; border-collapse:collapse; }
+    .info-table td { padding:11px 20px; border-bottom:1px solid #f5f5f5; font-size:13.5px; vertical-align:middle; }
+    .info-table tr:last-child td { border-bottom:none; }
+    .info-label { color:#888; white-space:nowrap; width:110px; }
+    .info-value { color:#333; }
+    .tag-blue { display:inline-block; padding:1px 8px; border-radius:4px; background:#e6f4ff; color:#1677ff; font-size:12.5px; border:1px solid #bae0ff; }
+    .status-done-inline { display:inline-flex; align-items:center; gap:4px; color:#16a34a; font-size:13px; }
+    .tabs-section { background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.04); overflow:hidden; }
+    .tabs-nav { display:flex; border-bottom:1px solid #f0f0f0; padding:0 20px; }
+    .tab-item { padding:12px 20px; font-size:14px; color:#666; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; }
+    .tab-item.active { color:#1677ff; border-bottom-color:#1677ff; font-weight:500; }
+    .tabs-body { padding:16px 20px 20px; }
+    .filter-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; flex-wrap:wrap; }
+    .segmented { display:inline-flex; background:#f5f5f5; border-radius:6px; padding:2px; gap:2px; }
+    .seg-opt { padding:5px 14px; border-radius:5px; border:none; background:transparent; font-size:13px; color:#666; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
+    .seg-opt.active { background:#fff; color:#1677ff; box-shadow:0 1px 3px rgba(0,0,0,.08); font-weight:500; }
+    .btn-ai-analysis { display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:6px; border:1px solid #6366f1; background:#f5f3ff; color:#6366f1; font-size:13px; cursor:pointer; font-family:inherit; font-weight:500; transition:all .2s; white-space:nowrap; }
+    .btn-ai-analysis:hover { background:#6366f1; color:#fff; }
+    .btn-ai-analysis.animating { opacity:.7; pointer-events:none; }
+    .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .data-table thead th { background:#fafbfc; padding:10px 8px; text-align:left; font-weight:500; color:#666; border-bottom:1px solid #e8e8e8; white-space:nowrap; position:sticky; top:0; z-index:1; }
+    .data-table tbody td { padding:9px 8px; border-bottom:1px solid #f5f5f5; color:#333; }
+    .data-table tbody tr:hover { background:#fafcff; }
+    .badge-selected { display:inline-block; padding:1px 8px; border-radius:4px; font-size:11.5px; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    .badge-unselected { display:inline-block; padding:1px 8px; border-radius:4px; font-size:11.5px; background:#fef3c7; color:#d97706; border:1px solid #fde68a; }
+    .btn-ai-inline { padding:3px 10px; border-radius:4px; border:1px solid #c7d2fe; background:#eef2ff; color:#6366f1; font-size:12px; cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap; }
+    .btn-ai-inline:hover { background:#6366f1; color:#fff; border-color:#6366f1; }
+    .summary-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid #f0f0f0; margin-top:12px; font-size:13px; color:#888; }
+    .summary-bar strong { color:#333; }
+    /* AI Drawer */
+    .ai-drawer-overlay { position:fixed; inset:0; background:rgba(0,0,0,0); z-index:999; pointer-events:none; transition:background .35s ease; }
+    .ai-drawer-overlay.active { background:rgba(0,0,0,.25); pointer-events:auto; }
+    .ai-drawer { position:fixed; top:0; right:-440px; width:420px; height:100vh; background:#fff; box-shadow:-4px 0 20px rgba(0,0,0,.08); z-index:1000; display:flex; flex-direction:column; transition:right .35s cubic-bezier(.4,0,.2,1); }
+    .ai-drawer.open { right:0; }
+    .drawer-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #f0f0f0; flex-shrink:0; }
+    .drawer-header-left { display:flex; align-items:center; gap:10px; }
+    .drawer-ai-icon { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; flex-shrink:0; }
+    .drawer-title { font-size:15px; font-weight:600; color:#1a1a1a; }
+    .drawer-close { width:32px; height:32px; border-radius:8px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#999; transition:all .15s; }
+    .drawer-close:hover { background:#f5f5f5; color:#333; }
+    .drawer-body { flex:1; overflow-y:auto; padding:16px; }
+    .drawer-footer { padding:12px 16px; border-top:1px solid #f0f0f0; flex-shrink:0; }
+    .ai-welcome { text-align:center; padding-top:40px; }
+    .ai-welcome-icon { width:56px; height:56px; border-radius:16px; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; color:#fff; }
+    .ai-welcome h3 { font-size:16px; font-weight:600; color:#1a1a1a; margin-bottom:8px; }
+    .ai-welcome p { font-size:13px; color:#888; line-height:1.6; margin-bottom:20px; }
+    .ai-quick-actions { display:flex; flex-direction:column; gap:8px; padding:0 10px; }
+    .ai-quick-btn { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:8px; border:1px solid #e8e8e8; background:#fff; cursor:pointer; font-size:13px; color:#333; font-family:inherit; text-align:left; transition:all .15s; }
+    .ai-quick-btn:hover { border-color:#6366f1; background:#f5f3ff; }
+    .qc-icon { font-size:15px; flex-shrink:0; }
+    .chat-input-wrap { display:flex; gap:8px; align-items:flex-end; }
+    .chat-input { flex:1; border:1px solid #e8e8e8; border-radius:8px; padding:9px 12px; font-size:13px; font-family:inherit; resize:none; outline:none; transition:border-color .15s; max-height:80px; line-height:1.5; }
+    .chat-input:focus { border-color:#6366f1; }
+    .chat-send { width:36px; height:36px; border-radius:8px; border:none; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .2s; }
+    .chat-send:hover { opacity:.9; }
+    .chat-message { display:flex; gap:10px; margin-bottom:14px; }
+    .chat-message.user-row { flex-direction:row-reverse; }
+    .chat-avatar { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .chat-avatar.ai { background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+    .chat-avatar.user { background:#e8e8e8; }
+    .chat-bubble { max-width:85%; padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.6; }
+    .ai-msg { background:#f5f5f5; color:#333; border-bottom-left-radius:2px; }
+    .user-msg { background:#6366f1; color:#fff; border-bottom-right-radius:2px; }
+    .analysis-card { background:#fff; border:1px solid #f0f0f0; border-radius:10px; margin-bottom:12px; overflow:hidden; transition:box-shadow .2s; }
+    .analysis-card:hover { box-shadow:0 2px 12px rgba(0,0,0,.06); }
+    .analysis-card-header { padding:10px 14px; font-size:13.5px; font-weight:600; border-bottom:1px solid #f5f5f5; cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; transition:filter .15s; }
+    .analysis-card-header:hover { filter:brightness(.97); }
+    .analysis-card-header .card-title { display:flex; align-items:center; gap:6px; }
+    .analysis-card-header .collapse-icon { width:14px; height:14px; transition:transform .25s ease; opacity:.45; flex-shrink:0; }
+    .analysis-card.collapsed .collapse-icon { transform:rotate(-90deg); }
+    .analysis-card.collapsed .analysis-card-body { display:none; }
+    .analysis-card-header.price { color:#e24b4a; background:#fef2f2; }
+    .analysis-card-header.recommend { color:#1677ff; background:#eff6ff; }
+    .analysis-card-header.risk { color:#d97706; background:#fffbeb; }
+    .analysis-card-header.strategy { color:#6366f1; background:#f5f3ff; }
+    .analysis-card-header.selection { color:#16a34a; background:#f0fdf4; }
+    .analysis-card-header.compare { color:#0891b2; background:#ecfeff; }
+    .analysis-card-body { padding:12px 14px; font-size:12.5px; color:#444; line-height:1.7; }
+    .selection-row { display:flex; align-items:center; padding:6px 8px; border-bottom:1px solid #f5f5f5; gap:8px; transition:background .15s; }
+    .selection-row:hover { background:#f7fdf7; }
+    .selection-row.checked { background:#f0fdf4; }
+    .selection-row input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#16a34a; }
+    .selection-row label { flex:1; font-size:12.5px; cursor:pointer; user-select:none; }
+    .selection-row .sel-price { color:#333; font-weight:500; margin-right:4px; }
+    .sel-score { font-size:11px; color:#6366f1; margin-left:6px; font-weight:500; }
+    .sel-reason { font-size:11px; color:#888; margin-left:4px; }
+    .sel-delivery { font-size:11px; color:#555; margin-left:4px; }
+    /* 对比卡片 */
+    .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+    .compare-cell { background:#f7f8fa; border-radius:8px; padding:10px 12px; border:1px solid #eee; }
+    .compare-cell.highlight { background:#f0fdf4; border-color:#bbf7d0; }
+    .compare-cell-title { font-size:11px; color:#888; margin-bottom:4px; }
+    .compare-cell-value { font-size:14px; font-weight:600; color:#333; }
+    .compare-cell-value.save { color:#16a34a; }
+    .compare-cell-value.cost { color:#e24b4a; }
+    .compare-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:8px; }
+    .compare-table th { background:#ecfeff; padding:6px 10px; text-align:left; font-weight:500; color:#0891b2; border-bottom:1px solid #e0f2fe; }
+    .compare-table td { padding:6px 10px; border-bottom:1px solid #f5f5f5; }
+    .compare-table tr.winner td { background:#f0fdf4; font-weight:500; }
+    .compare-tip { padding:8px 10px; background:#f5f3ff; border-radius:6px; font-size:11.5px; color:#6366f1; margin-top:8px; }
+    /* A/B/C 方案卡片 */
+    .plan-card { border:1.5px solid #e8e8e8; border-radius:10px; margin-bottom:10px; overflow:hidden; transition:all .2s; cursor:pointer; }
+    .plan-card:hover { border-color:#c7d2fe; box-shadow:0 2px 8px rgba(99,102,241,.1); }
+    .plan-card.selected { border-color:#6366f1; box-shadow:0 2px 12px rgba(99,102,241,.18); }
+    .plan-card.selected .plan-header { background:linear-gradient(135deg,#6366f1,#8b5cf6) !important; color:#fff !important; }
+    .plan-card.selected .plan-header .plan-tag { background:rgba(255,255,255,.25); color:#fff; }
+    .plan-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; font-size:13px; font-weight:600; transition:background .15s; }
+    .plan-header .plan-left { display:flex; align-items:center; gap:8px; }
+    .plan-badge { width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+    .plan-badge.a { background:#e24b4a; }
+    .plan-badge.b { background:#1677ff; }
+    .plan-badge.c { background:#6366f1; }
+    .plan-tag { font-size:10.5px; padding:2px 8px; border-radius:10px; background:#f0f0f0; color:#666; font-weight:500; }
+    .plan-body { padding:10px 14px; font-size:12px; color:#444; line-height:1.6; }
+    .plan-strategy { font-size:11.5px; color:#666; margin-bottom:8px; padding:6px 10px; background:#f9fafb; border-radius:6px; border-left:3px solid #e0e0e0; }
+    .plan-card.selected .plan-strategy { border-left-color:#6366f1; background:#f5f3ff; color:#4c1d95; }
+    .plan-metrics { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; }
+    .plan-metric { text-align:center; padding:6px 4px; background:#f7f8fa; border-radius:6px; }
+    .plan-metric-val { font-size:14px; font-weight:700; color:#1a1a1a; }
+    .plan-metric-label { font-size:10px; color:#999; margin-top:2px; }
+    .plan-suppliers { font-size:11.5px; color:#555; margin-bottom:6px; }
+    .plan-suppliers .ps-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap; }
+    .plan-suppliers .ps-name { display:inline-block; padding:1px 6px; background:#eff6ff; color:#1677ff; border-radius:3px; font-size:11px; }
+    .plan-suppliers .ps-material { display:inline-block; padding:1px 6px; background:#fef3c7; color:#92400e; border-radius:3px; font-size:10.5px; }
+    .plan-pros-cons { display:flex; gap:8px; margin-top:6px; }
+    .plan-pros, .plan-cons { flex:1; padding:6px 8px; border-radius:6px; font-size:11px; line-height:1.5; }
+    .plan-pros { background:#f0fdf4; color:#065f46; }
+    .plan-cons { background:#fef2f2; color:#991b1b; }
+    .plan-radio { width:16px; height:16px; border-radius:50%; border:2px solid #d0d0d0; flex-shrink:0; transition:all .2s; position:relative; }
+    .plan-card.selected .plan-radio { border-color:#fff; background:#fff; }
+    .plan-card.selected .plan-radio::after { content:''; position:absolute; top:3px; left:3px; width:8px; height:8px; border-radius:50%; background:#6366f1; }
+    .plan-confirm-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#f5f3ff; border-top:1px solid #ddd6fe; margin-top:8px; border-radius:0 0 10px 10px; }
+    .plan-confirm-bar .count { font-size:12.5px; color:#6366f1; font-weight:500; }
+    .price-benchmark { margin-top:12px; padding:10px 12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; }
+    .price-benchmark-title { font-size:12px; font-weight:600; color:#374151; margin-bottom:8px; }
+    .price-benchmark-row { display:flex; align-items:center; padding:5px 0; font-size:12px; border-bottom:1px solid #f3f4f6; }
+    .price-benchmark-row:last-of-type { border-bottom:none; }
+    .price-benchmark-label { width:110px; color:#6b7280; flex-shrink:0; }
+    .price-benchmark-val { font-weight:600; color:#1a1a1a; min-width:70px; }
+    .price-benchmark-src { font-size:10px; color:#9ca3af; margin-left:auto; background:#f3f4f6; padding:1px 6px; border-radius:3px; }
+    .price-benchmark-note { font-size:11px; color:#9ca3af; margin-top:6px; padding-top:6px; border-top:1px dashed #e5e7eb; }
+    .selection-row .sel-tag { font-size:11px; padding:1px 6px; border-radius:3px; margin-left:4px; }
+    .sel-tag.rec { background:#dcfce7; color:#16a34a; }
+    .sel-tag.alt { background:#eff6ff; color:#1677ff; }
+
+    /* ===== V2.3 窄栏适配（AI助手侧边栏 420px → 有效宽度 ~388px） ===== */
+    /* 投标方案卡片：窄栏降低尺寸、允许换行 */
+    .plan-header .plan-left { flex-wrap:wrap; row-gap:4px; }
+    .plan-metrics { gap:4px; }
+    .plan-metric { padding:5px 3px; min-width:0; }
+    .plan-metric-val { font-size:13px; }
+    .plan-metric-label { font-size:9.5px; }
+    /* 优势/注意：窄栏时纵向排列 */
+    .plan-pros-cons { gap:6px; }
+    .plan-pros-cons > div { flex:1; min-width:0; word-break:break-word; }
+    /* 多维对标行：窄栏允许换行 */
+    .price-benchmark-row { flex-wrap:wrap; row-gap:3px; }
+    .price-benchmark-label { width:auto; min-width:75px; }
+    .price-benchmark-src { margin-left:0; }
+    /* 分析卡片内表格：窄栏加横向滚动 */
+    .analysis-card-body > table { display:block; overflow-x:auto; max-width:100%; }
+    .analysis-card-body > table > thead,
+    .analysis-card-body > table > tbody { display:table; width:100%; min-width:280px; }
+    /* 物料总览表格：窄栏加横向滚动 */
+    .material-overview { overflow-x:auto; }
+    .material-overview table { min-width:500px; }
+    /* 供应商行：窄栏允许换行 */
+    .plan-suppliers .ps-row { row-gap:3px; }
+    /* 方案卡片：窄栏下供应商名和物料标签不挤 */
+    .ps-name { white-space:nowrap; }
+    .ps-material { white-space:nowrap; }
+
+    /* ===== V2.4 对话式方案确认 ===== */
+    .plan-confirm-card { background:#fff; border:1.5px solid #c7d2fe; border-radius:10px; overflow:hidden; margin-top:6px; }
+    .plan-confirm-card .pc-header { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; padding:10px 14px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+    .plan-confirm-card .pc-body { padding:12px 14px; }
+    .plan-confirm-card .pc-strategy { padding:8px 10px; background:#f5f3ff; border-radius:6px; font-size:12px; color:#4c1d95; line-height:1.6; margin-bottom:10px; }
+    .plan-confirm-card .pc-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:10px; display:block; overflow-x:auto; }
+    .plan-confirm-card .pc-table th { padding:6px 8px; text-align:left; border-bottom:1px solid #eee; background:#f7f8fa; white-space:nowrap; }
+    .plan-confirm-card .pc-table td { padding:6px 8px; border-bottom:1px solid #f5f5f5; white-space:nowrap; }
+    .plan-confirm-card .pc-pros-cons { display:flex; gap:6px; margin-bottom:10px; }
+    .plan-confirm-card .pc-pros-cons > div { flex:1; min-width:0; padding:6px 10px; border-radius:6px; font-size:11px; line-height:1.5; word-break:break-word; }
+    .plan-confirm-card .pc-pros { background:#f0fdf4; color:#065f46; }
+    .plan-confirm-card .pc-cons { background:#fef2f2; color:#991b1b; }
+    .plan-confirm-card .pc-actions { display:flex; gap:8px; }
+    .plan-confirm-card .pc-btn-confirm { padding:7px 18px; border-radius:6px; border:none; background:#16a34a; color:#fff; font-size:12.5px; font-weight:500; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .plan-confirm-card .pc-btn-confirm:hover { background:#15803d; }
+    .plan-confirm-card .pc-btn-cancel { padding:7px 18px; border-radius:6px; border:1px solid #d9d9d9; background:#fff; color:#666; font-size:12.5px; cursor:pointer; font-family:inherit; }
+    .plan-confirm-card .pc-btn-cancel:hover { border-color:#999; color:#333; }
+    .plan-confirm-card .pc-note { font-size:11.5px; color:#888; margin-top:8px; }
+    .plan-confirm-card.confirmed .pc-actions { display:none; }
+    .plan-confirm-card.confirmed .pc-note { color:#16a34a; font-weight:500; }
+    .plan-confirm-card.confirmed { border-color:#16a34a; }
+
+    /* ===== V2.2 物料画像 ===== */
+    .material-info-bar { display:flex; align-items:center; gap:8px; padding:6px 10px; background:#f0f5ff; border:1px solid #d6e4ff; border-radius:8px; margin-bottom:10px; font-size:12px; flex-wrap:wrap; }
+    .material-info-bar .mi-icon { flex-shrink:0; width:16px; height:16px; border-radius:4px; background:#6366f1; display:inline-flex; align-items:center; justify-content:center; }
+    .material-info-bar .mi-icon svg { width:10px; height:10px; }
+    .material-info-bar .mi-thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; flex-shrink:0; border:1px solid #d6e4ff; background:#fff; }
+    .material-info-bar .mi-name { font-weight:600; color:#1a1a1a; }
+    .material-info-bar .mi-code { font-size:11px; color:#1677ff; background:#e6f4ff; padding:1px 6px; border-radius:3px; font-family:'SF Mono','Consolas','Monaco',monospace; white-space:nowrap; }
+    .material-info-bar .mi-detail { color:#6b7280; font-size:11px; }
+    .material-info-bar .mi-count { margin-left:auto; font-size:11px; color:#6366f1; font-weight:500; background:#e0e7ff; padding:1px 8px; border-radius:10px; white-space:nowrap; }
+    .mi-thumb-sm { width:28px; height:28px; border-radius:4px; object-fit:cover; flex-shrink:0; border:1px solid #e5e7eb; background:#fff; vertical-align:middle; }
+    .material-tab-bar { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+    .material-tab { padding:5px 14px; border-radius:16px; border:1.5px solid #e5e7eb; background:#fff; font-size:12px; cursor:pointer; color:#555; transition:all .2s; white-space:nowrap; user-select:none; }
+    .material-tab:hover { border-color:#c7d2fe; color:#6366f1; background:#f5f3ff; }
+    .material-tab.active { background:#6366f1; color:#fff; border-color:#6366f1; font-weight:500; }
+    .material-tab .mt-badge { font-size:10px; background:rgba(0,0,0,.1); padding:1px 6px; border-radius:8px; margin-left:4px; }
+    .material-tab.active .mt-badge { background:rgba(255,255,255,.25); }
+    .material-overview { background:#fafafa; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:10px; }
+    .material-overview-title { font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:10px; }
+    .material-overview table { width:100%; border-collapse:collapse; font-size:12px; }
+    .material-overview th { padding:5px 8px; text-align:left; border-bottom:2px solid #e5e7eb; color:#6b7280; font-size:11px; font-weight:600; }
+    .material-overview td { padding:6px 8px; border-bottom:1px solid #f3f4f6; }
+    .material-overview .mo-best { color:#16a34a; font-weight:600; }
+    .material-overview .mo-warn { color:#e24b4a; font-weight:600; }
+    .material-analysis-wrap { margin-top:6px; }
+    .drawer-material-tabs { padding:0 14px 6px; border-bottom:1px solid #f0f0f0; display:flex; gap:4px; flex-wrap:wrap; }
+    .drawer-material-tab { padding:4px 12px; border-radius:14px; font-size:11.5px; cursor:pointer; border:1.5px solid #e5e7eb; background:#fff; color:#555; transition:all .2s; white-space:nowrap; user-select:none; }
+    .drawer-material-tab:hover { border-color:#c7d2fe; color:#6366f1; }
+    .drawer-material-tab.active { background:#6366f1; color:#fff; border-color:#6366f1; font-weight:500; }
+    .sel-confirm-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#f0fdf4; border-top:1px solid #d1fae5; }
+    .sel-confirm-bar .count { font-size:12.5px; color:#16a34a; font-weight:500; }
+    .sel-synced-tip { padding:8px 14px; background:#ecfdf5; border-top:1px solid #d1fae5; font-size:11.5px; color:#065f46; display:none; align-items:center; gap:6px; }
+    .sel-synced-tip.show { display:flex; }
+    .sel-confirm-dialog { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.35); z-index:10000; display:none; align-items:center; justify-content:center; }
+    .sel-confirm-dialog.show { display:flex; }
+    .sel-confirm-dialog .dlg-box { background:#fff; border-radius:12px; padding:24px; max-width:380px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,.15); }
+    .sel-confirm-dialog .dlg-title { font-size:14px; font-weight:500; color:#111; margin-bottom:8px; }
+    .sel-confirm-dialog .dlg-body { font-size:13px; color:#555; line-height:1.7; margin-bottom:16px; }
+    .sel-confirm-dialog .dlg-actions { display:flex; gap:10px; justify-content:flex-end; }
+    .risk-badge { display:inline-block; padding:1px 6px; border-radius:3px; font-size:11px; font-weight:500; }
+    .risk-badge.high { background:#fef2f2; color:#dc2626; }
+    .risk-badge.medium { background:#fffbeb; color:#d97706; }
+    .risk-badge.low { background:#f0fdf4; color:#16a34a; }
+    .stale-notice { padding:10px 14px; margin-bottom:12px; background:#fef3c7; border:1px solid #fde68a; border-radius:8px; font-size:12px; color:#92400e; display:flex; align-items:flex-start; gap:6px; line-height:1.5; }
+    .typing-indicator { display:flex; gap:4px; padding:4px 0; }
+    .typing-indicator span { width:6px; height:6px; border-radius:50%; background:#c7d2fe; animation:typing 1.4s infinite ease-in-out both; }
+    .typing-indicator span:nth-child(1) { animation-delay:0s; }
+    .typing-indicator span:nth-child(2) { animation-delay:.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay:.4s; }
+    @keyframes typing { 0%,80%,100%{transform:scale(.6);opacity:.4;} 40%{transform:scale(1);opacity:1;} }
+    .skeleton-line { height:10px; border-radius:4px; background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%); background-size:200% 100%; animation:skeleton 1.5s infinite; margin-bottom:6px; }
+    .skeleton-line.w1 { width:90%; }
+    .skeleton-line.w2 { width:70%; }
+    .skeleton-line.w3 { width:85%; }
+    @keyframes skeleton { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+    /* Doc Modal */
+    .doc-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:2000; display:none; align-items:center; justify-content:center; }
+    .doc-modal-overlay.active { display:flex; }
+    .doc-modal { width:1000px; max-height:85vh; background:#fff; border-radius:14px; box-shadow:0 8px 40px rgba(0,0,0,.12); display:flex; flex-direction:column; overflow:hidden; animation:modal-in .3s ease; }
+    @keyframes modal-in { from{opacity:0;transform:scale(.96) translateY(16px);} to{opacity:1;transform:scale(1) translateY(0);} }
+    .doc-modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid #f0f0f0; flex-shrink:0; }
+    .doc-modal-header h2 { font-size:17px; font-weight:600; color:#1a1a1a; display:flex; align-items:center; gap:8px; }
+    .doc-modal-close { width:32px; height:32px; border-radius:8px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#999; font-size:18px; transition:all .15s; }
+    .doc-modal-close:hover { background:#f5f5f5; color:#333; }
+    .doc-modal-main { display:flex; flex:1; overflow:hidden; }
+    .doc-toc { width:200px; flex-shrink:0; border-right:1px solid #f0f0f0; overflow-y:auto; padding:12px 0; background:#fafbfc; }
+    .doc-toc-title { font-size:11px; font-weight:600; color:#999; text-transform:uppercase; letter-spacing:.5px; padding:4px 16px 10px; }
+    .doc-toc-item { display:block; padding:7px 16px; font-size:12.5px; color:#666; text-decoration:none; cursor:pointer; transition:all .12s; border-left:2px solid transparent; line-height:1.5; }
+    .doc-toc-item:hover { background:#f0f0f5; color:#333; }
+    .doc-toc-item.active { background:#f0effe; color:#6366f1; border-left-color:#6366f1; font-weight:500; }
+    .doc-toc-item.sub { padding-left:28px; font-size:12px; }
+    .doc-modal-body { flex:1; overflow-y:auto; padding:24px; }
+    .doc-section { margin-bottom:28px; scroll-margin-top:16px; }
+    .doc-section:last-child { margin-bottom:0; }
+    .doc-section h3 { font-size:15px; font-weight:600; color:#1a1a1a; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid #6366f1; display:inline-block; }
+    .doc-section p { font-size:13.5px; color:#555; line-height:1.7; margin-bottom:10px; }
+    .doc-table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+    .doc-table th { background:#fafafa; padding:8px 12px; text-align:left; font-weight:500; color:#666; border-bottom:1px solid #e8e8e8; white-space:nowrap; }
+    .doc-table td { padding:8px 12px; border-bottom:1px solid #f5f5f5; color:#333; line-height:1.6; }
+    .doc-table tr:last-child td { border-bottom:none; }
+    .doc-badge-ac { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11.5px; background:#f5f3ff; color:#6366f1; font-weight:500; }
+
+    /* ===== 08 评测集合 / Benchmark ===== */
+    .eval-overview { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
+    .eval-ov-card { background:#f9fafb; border-radius:8px; padding:14px; text-align:center; border:1px solid #eee; }
+    .eval-ov-num { font-size:22px; font-weight:700; color:#6366f1; }
+    .eval-ov-sub { font-size:11px; color:#999; margin-top:2px; }
+    .eval-ov-label { font-size:12px; color:#888; margin-top:4px; }
+    /* Benchmark 矩阵 */
+    .bm-matrix { overflow-x:auto; margin-bottom:18px; }
+    .bm-matrix table { width:100%; border-collapse:collapse; font-size:12px; }
+    .bm-matrix th { background:#f8f9fb; padding:8px 6px; border:1px solid #eee; font-weight:600; color:#555; text-align:center; white-space:nowrap; }
+    .bm-matrix td { padding:8px 6px; border:1px solid #eee; text-align:center; font-size:12px; }
+    .bm-matrix td:first-child { font-weight:500; color:#333; }
+    .bm-matrix td:nth-child(2) { text-align:left; }
+    .bm-chk { color:#10b981; font-weight:700; }
+    .bm-chk-o { color:#f59e0b; } /* optional / conditional check */
+    .bm-empty { color:#ccc; }
+    .bm-diff-easy { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:#d1fae5; color:#059669; font-weight:500; }
+    .bm-diff-med  { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:#fef3c7; color:#d97706; font-weight:500; }
+    .bm-diff-hard { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:#fee2e2; color:#dc2626; font-weight:500; }
+    /* Benchmark 加权评分表 */
+    .bm-score-table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+    .bm-score-table th { background:#f8f9fb; padding:8px 10px; border:1px solid #eee; font-weight:600; color:#555; }
+    .bm-score-table td { padding:8px 10px; border:1px solid #eee; }
+    .bm-score-table td.num { text-align:right; font-weight:500; }
+    .eval-testcase { background:#fff; border:1px solid #e8e8e8; border-radius:10px; margin-bottom:16px; overflow:hidden; }
+    .eval-tc-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #f0f0f0; }
+    .eval-tc-id { font-size:11px; font-weight:600; padding:3px 10px; border-radius:12px; color:#fff; flex-shrink:0; }
+    .eval-tc-id.normal { background:#10b981; }
+    .eval-tc-id.boundary { background:#f59e0b; }
+    .eval-tc-id.extreme { background:#ef4444; }
+    .eval-tc-title { font-size:14px; font-weight:600; color:#1a1a1a; }
+    .eval-tc-desc { font-size:12px; color:#888; }
+    .eval-tc-body { padding:12px 16px; }
+    .eval-tc-sub { font-size:12.5px; font-weight:600; color:#555; margin:10px 0 6px; display:flex; align-items:center; gap:6px; }
+    .eval-tc-sub::before { content:''; display:inline-block; width:3px; height:14px; border-radius:2px; }
+    .eval-tc-sub.input::before { background:#1677ff; }
+    .eval-tc-sub.expected::before { background:#10b981; }
+    .eval-tc-sub.criteria::before { background:#f59e0b; }
+    .eval-mini-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .eval-mini-table th { background:#f7f8fa; padding:6px 10px; text-align:left; font-weight:500; color:#666; border:1px solid #eee; font-size:11.5px; }
+    .eval-mini-table td { padding:6px 10px; border:1px solid #eee; color:#333; }
+    .eval-mini-table .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .eval-tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:500; }
+    .eval-tag.pass { background:#ecfdf5; color:#059669; }
+    .eval-tag.conditional { background:#fffbeb; color:#d97706; }
+    .eval-method { background:#f9fafb; border-radius:8px; padding:14px; margin:10px 0; }
+    .eval-method-title { font-size:13.5px; font-weight:600; color:#1a1a1a; margin-bottom:6px; }
+    .eval-method p { font-size:13px; color:#555; line-height:1.7; margin-bottom:6px; }
+    .eval-threshold { background:linear-gradient(135deg,#f5f3ff,#ede9fe); border-radius:8px; padding:14px; margin-top:12px; }
+    .eval-threshold-title { font-size:13.5px; font-weight:600; color:#6366f1; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+
+<!-- ========== LAYOUT ========== -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg class="sidebar-logo-img" viewBox="0 0 36 36" fill="none">
+        <rect x="2" y="8" width="8" height="20" rx="2" fill="#1677ff"/>
+        <rect x="14" y="4" width="8" height="28" rx="2" fill="#479fff"/>
+        <rect x="26" y="10" width="8" height="16" rx="2" fill="#8cc8ff"/>
+      </svg>
+      <div class="sidebar-logo-text">供应链管理<br><span class="sidebar-logo-sub">Supply Chain</span></div>
+    </div>
+    <nav class="sidebar-menu">
+      <div class="menu-item active"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><span class="menu-text">工作台</span></div>
+      <div class="menu-item expanded"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span class="menu-text">寻源管理</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="submenu show">
+        <div class="submenu-item">询价管理 <span style="font-size:11px;color:#888;background:#f0f0f0;padding:0 5px;border-radius:3px">2</span></div>
+        <div class="submenu-item" style="background:#e6f4ff;color:#1677ff;font-weight:500">比价单</div>
+        <div class="submenu-item">核价单</div>
+      </div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M6 7h12M6 11h12M6 15h8"/></svg><span class="menu-text">采购管理</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span class="menu-text">供应商管理</span></div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg><span class="menu-text">商城管理</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span class="menu-text">财务管理</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="menu-text">公告消息</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="menu-text">账户管理</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="menu-item"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="menu-text">系统管理</span><svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    </nav>
+    <div class="sidebar-footer">供应链管理平台 v1.0 · 智能比价 V2.5</div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Header -->
+    <header class="header">
+      <span class="header-tab active">工作台</span>
+      <span class="header-tab-add">+</span>
+      <div class="header-right">
+        <button class="btn btn-doc" onclick="openDocModal()" title="需求文档">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          需求文档
+        </button>
+        <button class="header-ai-btn" onclick="openAIDrawer()" title="AI比价助手">
+          <span class="ai-dot"></span>
+          AI助手
+        </button>
+        <div class="header-icon-btn" title="消息通知">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+        <div class="header-user">
+          <div class="user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <span>吴焕军</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <div class="content" id="pageContent">
+      <div class="breadcrumb">
+        <div class="breadcrumb-back" title="返回"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
+        <span class="breadcrumb-link">寻源管理</span><span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-link">比价单</span><span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">PC202607010001</span>
+      </div>
+      <div class="action-bar">
+        <button class="btn">退回报价</button>
+        <button class="btn">导出报价</button>
+        <button class="btn">打 印</button>
+      </div>
+      <div class="title-card">
+        <div class="title-row">
+          <h1 class="page-title">工用气缸 / 液压阀 | 盒 / 箱询价汇总比价</h1>
+          <span class="status-badge"><span class="status-dot"></span>已完成</span>
+          <span class="page-code">PC202607010001</span>
+        </div>
+        <div class="title-sub">A001 香港立讯采购组 · 关联询价：RFQ202607010004 · 2种物料 7条报价</div>
+      </div>
+      <div class="info-section">
+        <div class="info-header"><span class="info-title">单据基本信息</span><span class="expand-btn">展开全部字段 ▾</span></div>
+        <table class="info-table">
+          <tr><td class="info-label">比价单号</td><td class="info-value">PC202607010001</td><td class="info-label">比价标题</td><td class="info-value">工用气缸 / 液压阀 | 盒 / 箱询价汇总比价</td><td class="info-label">询价单号</td><td class="info-value">RFQ202607010004</td><td class="info-label">询价标题</td><td class="info-value">工用气缸 | 盒 / 箱询价</td></tr>
+          <tr><td class="info-label">来源</td><td class="info-value">上游单据生成</td><td class="info-label">创建人</td><td class="info-value">wangzengke</td><td class="info-label">询价类别</td><td class="info-value"><span class="tag-blue">正常采购</span></td><td class="info-label">是否VMI询价</td><td class="info-value">仅一般询价</td></tr>
+          <tr><td class="info-label">状态</td><td class="info-value"><span class="status-done-inline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>已完成</span></td><td class="info-label">转核价进度</td><td class="info-value">全部核价</td><td class="info-label">创建时间</td><td class="info-value">2026-07-01 17:08:52</td><td class="info-label">截止时间</td><td class="info-value">2026-07-08 11:18:04</td></tr>
+          <tr><td class="info-label">附件</td><td class="info-value">--</td><td class="info-label">比价备注</td><td class="info-value">-</td><td colspan="4"></td></tr>
+        </table>
+      </div>
+      <div class="tabs-section" id="tabsSection">
+        <div class="tabs-nav">
+          <div class="tab-item active">比价行</div>
+          <div class="tab-item">操作记录</div>
+        </div>
+        <div class="tabs-body">
+          <div class="filter-bar">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="segmented" id="statusSeg">
+                <button class="seg-opt active" onclick="switchSeg('statusSeg',this)">全部</button>
+                <button class="seg-opt" onclick="switchSeg('statusSeg',this)">未入选</button>
+                <button class="seg-opt" onclick="switchSeg('statusSeg',this)">已入选</button>
+                <button class="seg-opt" onclick="switchSeg('statusSeg',this)">高于历史低价</button>
+              </div>
+              <div class="segmented" id="viewSeg">
+                <button class="seg-opt active" onclick="switchSeg('viewSeg',this)">物料视图</button>
+                <button class="seg-opt" onclick="switchSeg('viewSeg',this)">供应商视图</button>
+              </div>
+            </div>
+            <button class="btn-ai-analysis" onclick="triggerFullAnalysis()" id="btnFullAI">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              一键AI分析
+            </button>
+          </div>
+
+          <table class="data-table" id="dataTable">
+            <thead>
+              <tr>
+                <th style="width:30px;"></th>
+                <th>物料编码</th><th>物料名称</th><th>规格型号</th><th>单位</th><th>数量</th>
+                <th>供应商编码</th><th>供应商名称</th><th>含税单价</th><th>税率</th><th>未税单价</th>
+                <th>币种</th><th>交期(天)</th><th>最小起订量</th><th>最小包装量</th>
+                <th>是否入选</th><th style="width:110px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-row="0" data-supplier="广州市东圃衡山信息科技有限公司" data-code="VEN2606240001" data-price="99.00" data-delivery="2" data-selected="true" data-material="工用气缸" data-material-code="MAT-001-GQ" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%234f46e5'/%3E%3Crect x='20' y='25' width='40' height='30' rx='4' fill='white' opacity='.9'/%3E%3Ccircle cx='40' cy='18' r='10' fill='white' opacity='.7'/%3E%3Ctext x='40' y='52' text-anchor='middle' fill='%234f46e5' font-size='22' font-weight='bold'%3E气%3C/text%3E%3C/svg%3E" data-quantity="500">
+                <td>1</td>
+                <td>MAT-001</td><td>工用气缸</td><td>Φ50×200</td><td>个</td><td>500</td>
+                <td>VEN2606240001</td><td>广州市东圃衡山信息科技有限公司</td>
+                <td style="font-weight:500">¥99.00</td><td>13%</td><td>¥87.61</td>
+                <td>CNY</td><td>2</td><td>1</td><td>1</td>
+                <td><span class="badge-selected">已入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(0)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+              <tr data-row="1" data-supplier="深圳华强电子科技有限公司" data-code="VEN2606240002" data-price="108.00" data-delivery="5" data-selected="false" data-material="工用气缸" data-material-code="MAT-001-GQ" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%234f46e5'/%3E%3Crect x='20' y='25' width='40' height='30' rx='4' fill='white' opacity='.9'/%3E%3Ccircle cx='40' cy='18' r='10' fill='white' opacity='.7'/%3E%3Ctext x='40' y='52' text-anchor='middle' fill='%234f46e5' font-size='22' font-weight='bold'%3E气%3C/text%3E%3C/svg%3E" data-quantity="500">
+                <td>2</td>
+                <td>MAT-001</td><td>工用气缸</td><td>Φ50×200</td><td>个</td><td>500</td>
+                <td>VEN2606240002</td><td>深圳华强电子科技有限公司</td>
+                <td style="font-weight:500">¥108.00</td><td>13%</td><td>¥95.58</td>
+                <td>CNY</td><td>5</td><td>1</td><td>1</td>
+                <td><span class="badge-unselected">未入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(1)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+              <tr data-row="2" data-supplier="东莞捷信达精密科技有限公司" data-code="VEN2606240003" data-price="85.00" data-delivery="12" data-selected="false" data-material="工用气缸" data-material-code="MAT-001-GQ" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%234f46e5'/%3E%3Crect x='20' y='25' width='40' height='30' rx='4' fill='white' opacity='.9'/%3E%3Ccircle cx='40' cy='18' r='10' fill='white' opacity='.7'/%3E%3Ctext x='40' y='52' text-anchor='middle' fill='%234f46e5' font-size='22' font-weight='bold'%3E气%3C/text%3E%3C/svg%3E" data-quantity="500">
+                <td>3</td>
+                <td>MAT-001</td><td>工用气缸</td><td>Φ50×200</td><td>个</td><td>500</td>
+                <td>VEN2606240003</td><td>东莞捷信达精密科技有限公司</td>
+                <td style="font-weight:500">¥85.00</td><td>13%</td><td>¥75.22</td>
+                <td>CNY</td><td>12</td><td>1</td><td>1</td>
+                <td><span class="badge-unselected">未入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(2)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+              <tr data-row="3" data-supplier="苏州博智达科技股份有限公司" data-code="VEN2606240004" data-price="96.00" data-delivery="3" data-selected="false" data-material="工用气缸" data-material-code="MAT-001-GQ" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%234f46e5'/%3E%3Crect x='20' y='25' width='40' height='30' rx='4' fill='white' opacity='.9'/%3E%3Ccircle cx='40' cy='18' r='10' fill='white' opacity='.7'/%3E%3Ctext x='40' y='52' text-anchor='middle' fill='%234f46e5' font-size='22' font-weight='bold'%3E气%3C/text%3E%3C/svg%3E" data-quantity="500">
+                <td>4</td>
+                <td>MAT-001</td><td>工用气缸</td><td>Φ50×200</td><td>个</td><td>500</td>
+                <td>VEN2606240004</td><td>苏州博智达科技股份有限公司</td>
+                <td style="font-weight:500">¥96.00</td><td>13%</td><td>¥84.96</td>
+                <td>CNY</td><td>3</td><td>1</td><td>1</td>
+                <td><span class="badge-unselected">未入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(3)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+              <tr data-row="4" data-supplier="上海阀特流体控制有限公司" data-code="VEN2606240005" data-price="200.00" data-delivery="7" data-selected="true" data-material="液压阀" data-material-code="MAT-002-YYF" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%23059b8a'/%3E%3Ccircle cx='40' cy='32' r='14' fill='white' opacity='.85'/%3E%3Crect x='36' y='42' width='8' height='18' rx='2' fill='white' opacity='.7'/%3E%3Ctext x='40' y='62' text-anchor='middle' fill='%23059b8a' font-size='22' font-weight='bold'%3E阀%3C/text%3E%3C/svg%3E" data-quantity="300">
+                <td>5</td>
+                <td>MAT-002-YYF</td><td>液压阀</td><td>DN50 PN16</td><td>台</td><td>300</td>
+                <td>VEN2606240005</td><td>上海阀特流体控制有限公司</td>
+                <td style="font-weight:500">¥200.00</td><td>13%</td><td>¥176.99</td>
+                <td>CNY</td><td>7</td><td>1</td><td>1</td>
+                <td><span class="badge-selected">已入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(4)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+              <tr data-row="5" data-supplier="浙江力诺流体控制科技股份有限公司" data-code="VEN2606240006" data-price="185.00" data-delivery="4" data-selected="false" data-material="液压阀" data-material-code="MAT-002-YYF" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%23059b8a'/%3E%3Ccircle cx='40' cy='32' r='14' fill='white' opacity='.85'/%3E%3Crect x='36' y='42' width='8' height='18' rx='2' fill='white' opacity='.7'/%3E%3Ctext x='40' y='62' text-anchor='middle' fill='%23059b8a' font-size='22' font-weight='bold'%3E阀%3C/text%3E%3C/svg%3E" data-quantity="300">
+                <td>6</td>
+                <td>MAT-002-YYF</td><td>液压阀</td><td>DN50 PN16</td><td>台</td><td>300</td>
+                <td>VEN2606240006</td><td>浙江力诺流体控制科技股份有限公司</td>
+                <td style="font-weight:500">¥185.00</td><td>13%</td><td>¥163.72</td>
+                <td>CNY</td><td>4</td><td>1</td><td>1</td>
+                <td><span class="badge-unselected">未入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(5)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+              <tr data-row="6" data-supplier="江苏神通阀门股份有限公司" data-code="VEN2606240007" data-price="210.00" data-delivery="5" data-selected="false" data-material="液压阀" data-material-code="MAT-002-YYF" data-material-image="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='12' fill='%23059b8a'/%3E%3Ccircle cx='40' cy='32' r='14' fill='white' opacity='.85'/%3E%3Crect x='36' y='42' width='8' height='18' rx='2' fill='white' opacity='.7'/%3E%3Ctext x='40' y='62' text-anchor='middle' fill='%23059b8a' font-size='22' font-weight='bold'%3E阀%3C/text%3E%3C/svg%3E" data-quantity="300">
+                <td>7</td>
+                <td>MAT-002-YYF</td><td>液压阀</td><td>DN50 PN16</td><td>台</td><td>300</td>
+                <td>VEN2606240007</td><td>江苏神通阀门股份有限公司</td>
+                <td style="font-weight:500">¥210.00</td><td>13%</td><td>¥185.84</td>
+                <td>CNY</td><td>5</td><td>1</td><td>1</td>
+                <td><span class="badge-unselected">未入选</span></td>
+                <td>
+                  <button class="btn-ai-inline" onclick="triggerRowAnalysis(6)" title="AI分析该供应商报价">AI分析</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="summary-bar">
+            <span>共 <strong>7</strong> 条报价记录</span>
+            <span>均价：<strong>¥140.43</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- AI Drawer Overlay -->
+<div class="ai-drawer-overlay" id="aiOverlay" onclick="closeAIDrawer()"></div>
+
+<!-- AI Drawer Panel -->
+<div class="ai-drawer" id="aiDrawer">
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-ai-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <span class="drawer-title">AI 比价助手</span>
+    </div>
+    <button class="drawer-close" onclick="closeAIDrawer()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody">
+    <div class="ai-welcome" id="aiWelcome">
+      <div class="ai-welcome-icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <h3>你好，我是AI比价助手</h3>
+      <p>输入「帮我分析这个需求单」即可触发全量分析，也可以直接提问：如哪家性价比最高、有没有价格异常。</p>
+      <div class="material-info-bar" id="welcomeMaterialBar" style="display:none">
+        <span class="mi-icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
+        <span id="welcomeMatImage"></span>
+        <span class="mi-name" id="welcomeMatName"></span>
+        <span class="mi-detail" id="welcomeMatDetail"></span>
+        <span class="mi-count" id="welcomeMatCount"></span>
+      </div>
+      <div class="ai-quick-actions">
+        <button class="ai-quick-btn" onclick="triggerFullAnalysis()">
+          <span class="qc-icon">⚙</span>
+          对当前报价数据进行全量分析
+        </button>
+        <button class="ai-quick-btn" onclick="triggerQuickQuestion('这几家供应商中，哪家性价比最高？')">
+          <span class="qc-icon">★</span>
+          这几家供应商中，哪家性价比最高？
+        </button>
+        <button class="ai-quick-btn" onclick="triggerQuickQuestion('有没有价格异常需要关注的？')">
+          <span class="qc-icon">⚠</span>
+          有没有价格异常需要关注的？
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <div class="chat-input-wrap">
+      <textarea class="chat-input" id="chatInput" placeholder="输入「帮我分析」触发全量分析，选好方案后也可输入「确认方案A」..." rows="1" onkeydown="handleChatKey(event)"></textarea>
+      <button class="chat-send" onclick="sendChatMessage()" id="sendBtn" title="发送">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Doc Modal -->
+<div class="doc-modal-overlay" id="docOverlay" onclick="closeDocModal()">
+  <div class="doc-modal" onclick="event.stopPropagation()">
+    <div class="doc-modal-header">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        AI智能比价助手 — 需求文档
+      </h2>
+      <button class="doc-modal-close" onclick="closeDocModal()">✕</button>
+    </div>
+    <div class="doc-modal-main">
+      <nav class="doc-toc" id="docToc">
+        <div class="doc-toc-title">目录</div>
+        <a class="doc-toc-item" data-target="sec-01" onclick="scrollToSection('sec-01')">01 — 页面目标</a>
+        <a class="doc-toc-item" data-target="sec-02" onclick="scrollToSection('sec-02')">02 — 用户故事</a>
+        <a class="doc-toc-item" data-target="sec-03" onclick="scrollToSection('sec-03')">03 — 信息架构</a>
+        <a class="doc-toc-item" data-target="sec-04" onclick="scrollToSection('sec-04')">04 — 业务流程</a>
+        <a class="doc-toc-item" data-target="sec-05" onclick="scrollToSection('sec-05')">05 — 提示词、Skill与Tool</a>
+        <a class="doc-toc-item" data-target="sec-06" onclick="scrollToSection('sec-06')">06 — 状态规则</a>
+        <a class="doc-toc-item" data-target="sec-07" onclick="scrollToSection('sec-07')">07 — 异常处理</a>
+        <a class="doc-toc-item" data-target="sec-08" onclick="scrollToSection('sec-08')">08 — 验收标准</a>
+        <a class="doc-toc-item" data-target="sec-09" onclick="scrollToSection('sec-09')">09 — 评测集合</a>
+      </nav>
+      <div class="doc-modal-body" id="docBody">
+      
+      <div class="doc-section" id="sec-01">
+        <h3>01 — 页面目标</h3>
+        <p><strong>问题背景</strong></p>
+        <p>采购员在比价页面查看多家供应商报价时，仅凭肉眼对比数据表效率低，容易遗漏异常报价、忽略风险因素、缺乏数据驱动的决策依据。</p>
+        <p><strong>核心价值</strong></p>
+        <p>在比价页面上直接嵌入AI分析能力，对当前报价数据做实时智能解读，帮助采购员更快、更准地做出入选决策。</p>
+        <p><strong>成功指标</strong></p>
+        <p>
+          (1) AI分析结果与采购员经验判断方向一致率 &gt;= 80%<br>
+          (2) 分析响应时间 &lt; 3秒<br>
+          (3) 用户无需离开比价页面即可完成决策
+        </p>
+      </div>
+
+      <div class="doc-section" id="sec-02">
+        <h3>02 — 用户故事</h3>
+        <table class="doc-table"><thead><tr><th>角色</th><th>职责</th><th>核心关注</th><th>使用场景</th></tr></thead><tbody>
+        <tr><td><strong>采购员</strong></td><td>执行比价、选择供应商、发起核价</td><td>价格是否合理、选谁、有什么风险</td><td>日常比价决策，逐单分析</td></tr>
+        </tbody></table>
+        <p style="margin-top:14px;background:#f8f5ff;border-left:3px solid #7c3aed;padding:12px 16px;border-radius:4px;line-height:1.8;color:#333;">
+          <strong>用户故事：</strong>作为<strong>采购员</strong>，在<strong>面对多家供应商报价需要做出入选决策</strong>时，我希望能<strong>一键触发AI自动分析当前页面的所有报价数据，获得价格合理性评估、供应商综合推荐排序、判断策略建议、潜在风险提示和智能中标方案选择</strong>，以便<strong>在无需离开比价页面的情况下，快速完成数据驱动的供应商入选判断，减少人工逐行对比的时间成本，降低遗漏异常报价或风险因素的可能性</strong>。
+        </p>
+      </div>
+
+      <div class="doc-section" id="sec-03">
+        <h3>03 — 信息架构</h3>
+        <p><strong>入口位置</strong></p>
+        <p>顶部 Header 栏右侧，铃铛图标左侧 → AI助手按钮（紫色渐变 + 绿色脉冲指示灯）</p>
+        <p><strong>四种触发方式</strong></p>
+        <p>
+          (1) <strong>Header AI按钮</strong> — 点击后右侧抽屉滑出，展示欢迎页 + 快捷操作入口<br>
+          (2) <strong>行内AI分析按钮</strong> — 每条报价数据行操作列中的「AI分析」按钮，打开面板并自动对该行供应商进行深度分析<br>
+          (3) <strong>工具栏一键AI分析</strong> — 筛选栏右侧的「一键AI分析」按钮，打开面板并对所有可视报价数据执行全量五维度分析<br>
+          (4) <strong>对话Intake</strong> — 在AI助手对话框内输入自然语言触发全量分析。支持以下Intake短语：<br>
+          &nbsp;&nbsp;&nbsp;· 「帮我分析这个需求单」「分析这个需求单」「帮我分析一下」→ 触发全量五维度分析<br>
+          &nbsp;&nbsp;&nbsp;· 其他自然语言提问（如「哪家性价比最高」）→ 触发快捷问答模式<br>
+          &nbsp;&nbsp;&nbsp;· Intake 检测为前缀匹配，由前端正则引擎完成，无需调用LLM
+        </p>
+        <p><strong>面板形态</strong></p>
+        <p>右侧抽屉滑出，宽度 420px。采用纯遮罩（overlay）覆盖模式，打开时主内容区域不会发生位移或推挤。</p>
+        <p><strong>技术方案</strong></p>
+        <p>AI 智能助手为独立系统，通过 <code>&lt;iframe&gt;</code> 嵌入到采购平台的比价单页面中。两个系统通过 <code>window.postMessage</code> 进行双向安全通信：</p>
+        <p>
+          (1) <strong>采购平台 → AI助手（分析触发）：</strong>父页面将结构化报价数据（JSON）通过 postMessage 发送给 iframe。<br>
+          (2) <strong>AI 助手（分析执行）：</strong>iframe 接收数据后执行五维度规则分析 + 中标方案智能生成（前端规则引擎 / 未来 LLM API）。<br>
+          (3) <strong>AI助手 → 采购平台（方案回传）：</strong>采购员在 AI 面板选择中标方案后，方案信息（方案ID、方案名称、供应商列表、策略说明、总成本）通过 postMessage 实时回传给父页面，父页面自动勾选对应供应商并填入方案策略。
+        </p>
+        <p style="color:#888;font-size:12.5px;">当前前端原型为演示简化，将父页面数据直接写在同一 HTML 中。实际部署时需拆分为独立 iframe，父页面通过 postMessage 传递数据并监听回传。</p>
+        <p><strong>核心功能特性</strong></p>
+        <p>
+          (1) <strong>五维度智能分析：</strong>每次分析覆盖价格合理性评估、供应商推荐排序、判断策略建议、风险提示、中标方案选择五个维度，结果以可折叠卡片形式呈现。一~四默认折叠、五默认展开，采购员聚焦决策环节。<br>
+          (2) <strong>分析结果置顶：</strong>分析完成后对话区域自动滚动至顶部，确保采购员从上到下完整阅读分析报告。<br>
+          (3) <strong>卡片折叠与默认展开策略：</strong>所有分析卡片支持点击表头折叠/展开，折叠图标带旋转动画。V2.4 默认策略：一~四（价格/推荐/策略/风险）折叠，五（中标方案）展开，减少信息过载。<br>
+          (4) <strong>A/B/C 三方案智能生成：</strong>AI 根据采购策略自动生成三个差异化中标方案——方案A（最低价，成本优先）、方案B（综合最优，均衡推荐）、方案C（组合供应，风险分散）。每个方案展示策略说明、供应商列表（含物料名称与采购数量）、单价/交期/vs均价偏离、优势与注意事项。<br>
+          (5) <strong>方案确认与回传：</strong>采购员选择方案后，在对话流中追加确认卡片（策略说明 + 供应商详情表 + 优劣势），支持点击「✓ 确认采纳」按钮或输入「确认方案A」自然语言确认；确认后通过 postMessage 实时回传至采购平台。<br>
+          (6) <strong>独立维度提示词架构：</strong>采用 1 个全局调度 Prompt + 5 个独立维度 Prompt 的设计（价格合理性 / 供应商推荐排序 / 判断策略建议 / 风险提示 / 中标方案选择），每个维度拥有独立的角色定位、分析规则和输出格式，支持多模型路由和独立调优。每个 Prompt 附带 Few-shot 示例（输入数据 + 期望输出 JSON），提升 LLM 输出稳定性和格式一致性。<br>
+          (7) <strong>对话 Intake：</strong>在对话框中输入自然语言（如「帮我分析这个需求单」）即可触发全量分析，由前端正则引擎做前缀匹配检测，非分析意图的消息保持普通对话模式。<br>
+          (8) <strong>供应商-物料关联：</strong>中标方案卡片中每个供应商旁展示对应物料名称和采购数量（如「工用气缸 × 500」），对话确认卡片和中标回传数据同步携带物料信息。<br>
+          (9) <strong>多维价格对标：</strong>在价格合理性卡片中引入集团历史最低价（内部基准）和工业品平台参考价（外部基准，覆盖京东工业品、震坤行、三横商城）两个对标维度，帮助采购员判断报价是否在集团可接受范围和市场价格区间内。当前原型阶段用模拟数据展示，后续接入真实集团价格库与工业品平台比价 API。<br>
+          (10) <strong>物料感知与多物料支持：</strong>AI 助手自动识别比价单中涉及的物料种类（按物料名称去重分组）。每组物料携带 <strong>物料编码</strong>（如 MAT-001-GQ）和 <strong>物料图片</strong>（缩略图）用于采购员身份确认。<strong>单物料场景：</strong>欢迎屏摘要栏 + 分析信息条均展示物料图片缩略图(36×36px)、物料编码标签、物料名称和供应商数，采购员始终知晓当前分析的目标物料。<strong>多物料场景：</strong>AI 抽屉顶部显示物料切换 Tab 栏（含编码） +「多物料总览」卡片（含图片和编码列）。总览视图下同时渲染全量合并的五维度分析卡片（价格合理性 / 供应商推荐排序 / 判断策略建议 / 风险提示）和 <strong>中标方案选择（方案 A/B/C）</strong>，采购员无需切换 Tab 即可在总览中完成跨物料决策。点击 Tab 切换至单物料时，总览卡片自动收起、显示该物料的独立五维度分析。所有卡片适配 420px 窄侧边栏，表格支持横向滚动、中标方案指标卡片自适应换行。
+        </p>
+      </div>
+
+      <div class="doc-section" id="sec-04">
+        <h3>04 — 业务流程</h3>
+        <p><strong>完整分析流水线（3阶段 / 9步骤 / 5张卡片）：</strong></p>
+
+        <p style="margin-top:14px;font-weight:600;color:#1a1a1a;">阶段零：物料分组识别（新增）</p>
+        <table class="doc-table"><thead><tr><th>步骤</th><th>操作</th><th>说明</th></tr></thead><tbody>
+        <tr><td>0.1</td><td>物料分组</td><td>调用 get_material_groups 从报价数据中按物料名称去重分组，输出物料数组 [{name, code, image, count, suppliers}]，包含物料编码与图片URL</td></tr>
+        <tr><td>0.2</td><td>分支判断</td><td>若仅 1 种物料 → 自动带入物料名进入阶段一；若 ≥2 种物料 → UI 显示物料切换 Tab + 总览卡片 + 全量合并分析卡片（含中标方案），同时等待用户选择目标物料进行单物料明细分析</td></tr>
+        </tbody></table>
+
+        <p style="margin-top:14px;font-weight:600;color:#1a1a1a;">阶段一：数据采集与清洗</p>
+        <table class="doc-table"><thead><tr><th>步骤</th><th>动作</th><th>详情</th></tr></thead><tbody>
+        <tr><td>1.1</td><td><strong>触发入口识别</strong></td><td>判断触发源：(a) 全量分析（工具栏「一键AI分析」按钮，提取所有行）；(b) 行内分析（数据行「AI分析」按钮，提取指定行 + 全量上下文）；(c) 快捷问答（快捷操作按钮或自由提问，如「哪家最便宜」）；(d) 对话 Intake（在对话输入框中输入自然语言唤醒词，如「帮我分析这个需求单」「分析当前比价单」「帮我看看这几家供应商」，命中后自动触发全量分析）</td></tr>
+        <tr><td>1.2</td><td><strong>数据接收（postMessage）</strong></td><td>采购平台父页面构建结构化报价数据 JSON（按供应商逐行：supplier / code / price / delivery / selected 等字段），通过 <code>iframe.contentWindow.postMessage(data, origin)</code> 发送给 AI 助手 iframe；iframe 端通过 <code>window.addEventListener('message', handler)</code> 监听并解析数据，同时按已配置的白名单校验 <code>event.origin</code> 安全性</td></tr>
+        <tr><td>1.3</td><td><strong>数据校验</strong></td><td>检测空数据 → 提示「未检测到报价数据」；仅1家 → 部分分析模式；价格非数字 → 过滤异常行并告警</td></tr>
+        </tbody></table>
+
+        <p style="margin-top:16px;font-weight:600;color:#1a1a1a;">阶段二：五维度规则分析</p>
+        <table class="doc-table"><thead><tr><th>维度</th><th style="width:130px">输入数据</th><th>分析逻辑</th><th style="width:170px">输出字段</th></tr></thead><tbody>
+        <tr>
+          <td><strong>价格合理性</strong></td>
+          <td>含税单价数组<br>[p1, p2, ..., pN]</td>
+          <td>
+            (1) 均价 avg = &Sigma;p / N<br>
+            (2) 逐行偏离率 dev = (p - avg) / avg &times; 100%<br>
+            (3) |dev| &le; 5% → 正常（绿）<br>
+            (4) 5% &lt; |dev| &le; 15% → 偏离（橙）<br>
+            (5) |dev| &gt; 15% → 异常（红，升级高风险）<br>
+            (6) <strong>集团最低价对标</strong> → 查询集团历史最低成交价，计算当前最低报价偏离率，低于集团最低价为异常，需核实定价依据<br>
+            (7) <strong>电商参考价对标</strong> → 查询京东工业品、震坤行、三横商城同类物料售价，计算均价偏离率，高于电商价需复核供应商定价策略
+          </td>
+          <td>{ avg, min, max, range,<br>findings[{supplier, price, deviation, severity, desc}],<br>groupBestPrice, ecommerceRef: { jd_industrial, zkh, sanheng } }</td>
+        </tr>
+        <tr>
+          <td><strong>供应商推荐</strong></td>
+          <td>报价 + 交期 +<br>入选状态</td>
+          <td>
+            (1) 价格评分（权重 60%）= min-max 归一化 &times; 60<br>
+            (2) 交期评分（权重 25%）= min-max 归一化 &times; 25<br>
+            (3) 入选加分（15%）= selected ? 15 : 0<br>
+            (4) 综合评分 = 价格分 + 交期分 + 入选分<br>
+            (5) 降序排列
+          </td>
+          <td>{ scores[{supplier, price, delivery,<br>totalScore, priceScore, deliveryScore}],<br>recommendation }</td>
+        </tr>
+        <tr>
+          <td><strong>判断策略建议</strong></td>
+          <td>推荐 + 风险 +<br>价格分析结果</td>
+          <td>
+            (1) 最低价 vs 第二低价差额 → 主选/备选建议<br>
+            (2) 最低价 vs 均价差额 → 谈判锚点<br>
+            (3) 高于均价 10% 的供应商 → 降价目标价<br>
+            (4) 最低价供应商交期偏长 → 组合供应
+          </td>
+          <td>[{ desc, action }]</td>
+        </tr>
+        <tr>
+          <td><strong>风险提示</strong></td>
+          <td>报价 + 交期 +<br>供应商数量 N</td>
+          <td>
+            (1) N=1 → 单一来源风险（高）<br>
+            (2) max/min &gt; 3 → 报价差异极大（高）<br>
+            (3) 所有报价相同 → 围标嫌疑（高）<br>
+            (4) 交期极差 &gt; 30天 → 交付弹性风险（中）<br>
+            (5) 个别偏离 &lt; -25% → 低价交付风险（中）<br>
+            按高/中/低三级分级
+          </td>
+          <td>[{ level: 'high'|'medium'|'low', desc }]</td>
+        </tr>
+        </tbody></table>
+
+        <p style="margin-top:16px;font-weight:600;color:#1a1a1a;">阶段三：结果渲染</p>
+        <table class="doc-table"><thead><tr><th>步骤</th><th>动作</th><th>详情</th></tr></thead><tbody>
+        <tr><td>3.1</td><td><strong>生成建议卡片</strong></td><td>五张 analysis-card（均支持点击表头折叠/展开）：<strong>V2.4 默认折叠策略：一~四默认折叠，五默认展开</strong>。价格（红表头 + 排名 + 偏离标注）、推荐（蓝表头 + 评分表 + 奖牌标记）、<strong>策略（紫表头 + 编号列表 + 操作建议）</strong>、风险（橙表头 + 等級 badge + 描述）、<strong>中标方案选择（绿表头 + A/B/C 三方案卡片 + 确认按钮）</strong></td></tr>
+        <tr><td>3.2</td><td><strong>方案智能生成、对话式确认与回传</strong></td><td>(1) AI 根据采购策略自动生成三个中标方案：<br>&nbsp;&nbsp;<strong>方案A — 最低价方案</strong>：选择报价最低的供应商，策略 = 成本最小化<br>&nbsp;&nbsp;<strong>方案B — 综合最优方案</strong>：选择综合评分最高的供应商（价格60%+交期25%+入选15%），策略 = 成本与时效均衡<br>&nbsp;&nbsp;<strong>方案C — 组合供应方案</strong>：选择低价供应商 + 快速交付供应商组合，策略 = 风险分散<br>(2) 每个方案卡片展示：策略说明、供应商列表、单价/交期/vs均价偏离、优势与注意事项<br>(3) 采购员选择一个方案 → 点击「确认方案（对话确认）」按钮 → 在对话流中追加确认卡片（策略说明 + 供应商详情表 + 优势/注意事项 + 确认/取消按钮）<br>(4) 用户点击「✓ 确认采纳」或输入「确认方案A」自然语言 → 通过 <code>postMessage</code> 回传至采购平台 + AI 回复确认成功消息<br>标识：<code>postMessage({ action: 'plan_selected', planId: 'A'|'B'|'C', planName, suppliers: [...], details: [{supplier, price, delivery, score, material, quantity}], strategy, totalCost })</code></td></tr>
+        <tr><td>3.3</td><td><strong>对话式包装</strong></td><td>每张卡片前追加 AI 头像 + 自然语言引入句：「以下是当前比价单的全量分析报告（共分析了 N 家供应商报价）」</td></tr>
+        <tr><td>3.4</td><td><strong>免责声明</strong></td><td>策略卡片末尾追加灰色免责条：「以上建议基于当前页面数据自动生成，仅供参考，最终决策请结合业务实际情况。」</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="doc-section" id="sec-05">
+        <h3>05 — 提示词、Skill与Tool设计</h3>
+        <p>本章定义比价Agent的完整能力体系，由三层构成：<strong>Prompt（提示词）</strong>驱动 LLM 的分析逻辑，<strong>Skill（技能）</strong>封装可复用的分析能力，<strong>Tool（工具）</strong>提供数据获取与系统交互的原子操作。三者关系：Agent 接收用户请求 → 调用 Tool 获取数据 → 调度 Skill 执行分析（Skill 内部使用 Prompt 驱动 LLM）→ 汇总结果渲染输出。</p>
+
+        <p style="margin-top:16px;font-weight:700;color:#6366f1;font-size:14px;">▍ 全局调度 Prompt（入口 Agent）</p>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:16px;font-size:12.5px;line-height:1.7;font-family:'SF Mono',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;margin:8px 0;">你是一个专业的采购比价分析调度助手，服务于供应链采购团队的比价决策场景。
+
+## 角色定位
+你是比价决策的「调度中枢」——接收采购员的分析请求，判断分析意图，调度五个专业维度的分析 Agent，汇总结果并按统一格式渲染输出。
+
+## 调度规则
+当用户触发分析时，按以下顺序依次调用五个维度 Agent：
+1. → 价格合理性分析 Agent
+2. → 供应商推荐排序 Agent
+3. → 风险提示 Agent
+4. → 判断策略建议 Agent（依赖前序价格+推荐+风险结果）
+5. → 中标方案选择 Agent（依赖前序价格+推荐+风险结果）
+
+每个维度的分析结果按卡片形式渲染，统一包装为对话式输出。
+
+## 行为准则
+- 不确定时不编造数据，明确说"当前数据不足以判断"
+- 不做最终决策，始终保留采购员的决策权
+- 所有金额和建议需标注货币单位（¥）
+- 语气专业但不冷漠，多用"建议""可考虑"等协商式表达
+- 免责声明始终跟随在判断策略建议卡片末尾
+
+## 示例（Few-shot）
+用户输入：「帮我分析这个比价单」
+调度过程：
+1. 调用 get_material_groups → 返回 [{name:"工用气缸", code:"MAT-001-GQ", count:4}]
+2. 仅 1 种物料 → 自动带入物料名，依次调用 5 个维度 Skill
+3. 汇总结果 → 调用 render_analysis_cards 渲染五张卡片
+AI 输出：「以下是当前比价物料【MAT-001-GQ 工用气缸】的全量分析报告（共分析了 4 家供应商报价）：」+ 五张卡片</div>
+
+        <!-- 维度1: 价格合理性 -->
+        <p style="margin-top:20px;font-weight:700;color:#e24b4a;font-size:14px;">▍ 维度一：价格合理性分析 Prompt</p>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:16px;font-size:12.5px;line-height:1.7;font-family:'SF Mono',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;margin:8px 0;">你是一个专业的采购价格合理性分析专家，专注评估供应商报价的价格水平是否在合理范围内。
+
+## 角色定位
+你是价格数据的「温度计」——不判断该选谁，只客观度量每一份报价相对市场均价的位置。你的输出是后续推荐和策略决策的数据基础。
+
+## 输入数据格式
+你会收到一个JSON数组，每个元素代表一家供应商的报价：
+{
+  "supplier": "供应商名称",
+  "code": "供应商编码",
+  "price": 99.00,       // 含税单价（CNY）
+  "selected": true      // 是否已被标记入选
+}
+
+## 分析规则
+- 均价 = Σ(price) / N
+- 偏离率 = (price - 均价) / 均价 × 100%
+- |偏离率| ≤ 5%：正常（绿色标记，标签"合理"）
+- 5% < |偏离率| ≤ 15%：偏高/偏低（橙色标记，标签"偏高"/"偏低"）
+- |偏离率| > 15%：异常（红色标记，标签"偏离"，需重点说明影响）
+- N = 1 时：标注「数据不足，无法进行价格对比分析」
+
+## 多维价格对标规则
+除了各供应商报价之间的横向对比外，还应引入以下两个外部基准进行交叉验证：
+
+- **集团最低价对标**：调用 query_group_best_price 获取该物料在集团采购体系内的历史最低成交价。若当前最低报价低于集团最低价 10% 以上，须标注「低于集团历史最低价，需核实定价依据」；若当前最低报价高于集团最低价，标注超出幅度供议价参考。
+- **电商参考价对标**：调用 query_ecommerce_price 获取京东工业品、震坤行、三横商城等工业品采购平台同款/同类物料售价。若供应商报价显著高于电商参考价（>15%），须标注「高于电商平台价，需复核供应商定价合理性」；若低于电商参考价，可作为 B2B 采购价格优势的佐证。
+
+## 输出格式
+输出一个JSON对象：
+{
+  "avg": 均价数字,
+  "min": 最低价数字,
+  "max": 最高价数字,
+  "range": 价差数字,
+  "findings": [
+    { "supplier": "名称", "price": 数字, "deviation": "偏离率", "severity": "high|medium|low", "desc": "描述" }
+  ],
+  "allPrices": [
+    { "supplier": "名称", "price": 数字, "deviation": "偏离率", "selected": 布尔 }
+  ],
+  "groupBestPrice": 数字,     // 集团历史最低成交价（若无法获取则为 null）
+  "ecommerceRef": {            // 电商参考价（若无法获取则为 null）
+    "jd_industrial": 数字,      // 京东工业品售价
+    "zkh": 数字,                // 震坤行售价
+    "sanheng": 数字             // 三横商城售价
+  }
+}
+
+## 注意事项
+- 偏离率的正负号必须准确：正 = 高于均价，负 = 低于均价
+- severity 判定：|偏离| > 25% → "high"；15% < |偏离| ≤ 25% → "medium"；其他 → "low"
+- 描述文本必须包含供应商名称、报价金额、偏离方向和幅度
+- groupBestPrice 和 ecommerceRef 为可选项，若数据源不可用则返回 null，不影响主流程执行
+
+## 示例（Few-shot）
+输入：
+[
+  {"supplier":"广州东圃衡山","code":"VEN001","price":99.00,"selected":true,"material":"工用气缸","quantity":500},
+  {"supplier":"深圳华强电子","code":"VEN002","price":108.00,"selected":false,"material":"工用气缸","quantity":500},
+  {"supplier":"东莞捷信达","code":"VEN003","price":85.00,"selected":false,"material":"工用气缸","quantity":500}
+]
+输出：
+{
+  "avg": 97.33, "min": 85.00, "max": 108.00, "range": 23.00,
+  "findings": [
+    {"supplier":"东莞捷信达","price":85.00,"deviation":"-12.7%","severity":"medium","desc":"低于均价12.7%，价格偏低，需核实低价交付能力"},
+    {"supplier":"深圳华强电子","price":108.00,"deviation":"+11.0%","severity":"medium","desc":"高于均价11.0%，报价偏高，建议议价至均价水平"}
+  ],
+  "allPrices": [
+    {"supplier":"广州东圃衡山","price":99.00,"deviation":"+1.7%","selected":true},
+    {"supplier":"深圳华强电子","price":108.00,"deviation":"+11.0%","selected":false},
+    {"supplier":"东莞捷信达","price":85.00,"deviation":"-12.7%","selected":false}
+  ],
+  "groupBestPrice": 82.50,
+  "ecommerceRef": {"jd_industrial":95.00,"zkh":92.00,"sanheng":98.00}
+}</div>
+
+        <!-- 维度2: 供应商推荐排序 -->
+        <p style="margin-top:20px;font-weight:700;color:#1677ff;font-size:14px;">▍ 维度二：供应商推荐排序 Prompt</p>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:16px;font-size:12.5px;line-height:1.7;font-family:'SF Mono',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;margin:8px 0;">你是一个专业的供应商评估排序专家，通过多维度加权评分对供应商进行综合排名。
+
+## 角色定位
+你是供应商选择的「裁判」——综合价格、交期、历史表现等多维度因素，给出量化的综合评分和排序，帮助采购员快速定位最优候选。
+
+## 输入数据格式
+你会收到一个JSON数组：
+{
+  "supplier": "供应商名称",
+  "price": 99.00,       // 含税单价（CNY）
+  "delivery": 2,        // 交期（天）
+  "selected": true      // 是否已被标记入选
+}
+
+## 评分规则
+- 价格得分 = (1 - (price - minPrice) / (maxPrice - minPrice)) × 60
+  （价格越低，得分越高；maxPrice = minPrice 时所有供应商得满分 60）
+- 交期得分 = (1 - (delivery - minDelivery) / (maxDelivery - minDelivery)) × 25
+  （交期越短，得分越高；maxDelivery = minDelivery 时所有供应商得满分 25）
+- 入选加分 = selected ? 15 : 0
+  （已入选供应商获得15分信任加分，体现历史合作关系价值）
+- 综合评分 = 价格得分 + 交期得分 + 入选加分
+- 按综合评分降序排列，第一名标记为「推荐」，第二名标记为「备选」
+- N < 2 时：标注「仅1家供应商，无法进行综合推荐排序」
+
+## 输出格式
+{
+  "scores": [
+    { "supplier": "名称", "price": 数字, "delivery": 数字, "selected": 布尔,
+      "totalScore": 数字, "priceScore": 数字, "deliveryScore": 数字 }
+  ],
+  "recommendation": { 第一名对象 },
+  "reason": "一句话总结推荐理由"
+}
+
+## 注意事项
+- 归一化分母为0时（所有价格或交期相同），赋满分并备注
+- 排序必须稳定：评分相同时保持原始数据顺序
+- 推荐理由需关联具体数据，如"价格最低且交期最短，综合优势明显"
+
+## 示例（Few-shot）
+输入：
+[
+  {"supplier":"广州东圃衡山","price":99.00,"delivery":2,"selected":true},
+  {"supplier":"深圳华强电子","price":108.00,"delivery":5,"selected":false},
+  {"supplier":"东莞捷信达","price":85.00,"delivery":12,"selected":false}
+]
+输出：
+{
+  "scores": [
+    {"supplier":"广州东圃衡山","price":99.00,"delivery":2,"selected":true,"totalScore":82.5,"priceScore":37.5,"deliveryScore":30.0},
+    {"supplier":"东莞捷信达","price":85.00,"delivery":12,"selected":false,"totalScore":60.0,"priceScore":60.0,"deliveryScore":0.0},
+    {"supplier":"深圳华强电子","price":108.00,"delivery":5,"selected":false,"totalScore":37.5,"priceScore":22.5,"deliveryScore":15.0}
+  ],
+  "recommendation": {"supplier":"广州东圃衡山","totalScore":82.5},
+  "reason": "价格适中且交期最短（2天），已入选供应商综合评分最高，推荐为主选"
+}</div>
+
+        <!-- 维度3: 判断策略建议 -->
+        <p style="margin-top:20px;font-weight:700;color:#6366f1;font-size:14px;">▍ 维度三：判断策略建议 Prompt</p>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:16px;font-size:12.5px;line-height:1.7;font-family:'SF Mono',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;margin:8px 0;">你是一个资深的采购谈判策略顾问，基于价格分布和供应商实力对比，为采购员提供可落地的谈判策略建议。
+
+## 角色定位
+你是采购员的「谈判参谋」——不替采购员做决定，但提供具体的议价目标、话术方向和操作建议，让采购员在谈判桌上有数据撑腰。
+
+## 输入数据
+你会收到三个分析结果对象：
+- priceResult（价格合理性分析结果）
+- supplierResult（供应商推荐排序结果）
+- riskResult（风险提示结果）
+
+## 策略生成规则
+1. 存在最低价且第二低价与之差距 > 0：
+   → 建议以最低价供应商为主选，用第二低价作为谈判参照
+   → 话术："XX 供应商报价最低（¥XX），比第二名低 XX%，可作为主选方案"
+2. 最低价低于均价：
+   → 计算节省金额 = (均价 - 最低价) × 数量
+   → 话术："选择 XX 可节省 ¥XX（较均价低 XX%），建议作为谈判锚点"
+3. 报价高于均价 10% 以上的供应商：
+   → 逐一列出，给出降价目标价 = 均价
+   → 话术："建议要求 XX 降价至 ¥XX（均价水平），降幅约 XX%"
+4. 最低价供应商交期 > 5 天：
+   → 提示组合供应方案
+   → 话术："XX 价格最优但交期 XX 天偏长，建议搭配交期最短的 XX 组合供应"
+5. N = 1 时：
+   → 话术："建议扩大供应商寻源范围，至少获取 3 家以上报价后进行比价"
+
+## 输出格式
+[
+  { "desc": "策略描述（含具体数据和话术）", "action": "建议操作步骤" },
+  ...
+]
+
+## 注意事项
+- 每条策略必须包含具体数字（金额、百分比、天数），不能泛泛而谈
+- 策略之间要有逻辑递进关系：先定主选 → 再压高价 → 最后给组合方案
+- 末尾追加免责声明："以上建议基于当前数据自动生成，仅供参考"
+
+## 示例（Few-shot）
+输入：priceResult.min=85, priceResult.avg=97.33, supplierResult.recommendation="广州东圃衡山(82.5分)", riskResult=[{level:"medium",desc:"东莞捷信达报价偏离-12.7%"}]
+输出：
+[
+  {"desc":"东莞捷信达报价最低（¥85.00），比第二名低13.6%，可作为主选方案", "action":"以¥85.00为谈判锚点，向其他供应商要求匹配或说明价差原因"},
+  {"desc":"深圳华强电子报价¥108.00高于均价11.0%，建议要求降价至¥97.33（均价水平），降幅约10%", "action":"发送议价函，引用均价数据和最低报价作为参照"},
+  {"desc":"东莞捷信达交期12天偏长，建议搭配广州东圃衡山（2天）组合供应", "action":"首批由广州东圃衡山交付，后续批量由东莞捷信达补充"},
+  "以上建议基于当前数据自动生成，仅供参考"
+]</div>
+
+        <!-- 维度4: 风险提示 -->
+        <p style="margin-top:20px;font-weight:700;color:#d97706;font-size:14px;">▍ 维度四：风险提示 Prompt</p>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:16px;font-size:12.5px;line-height:1.7;font-family:'SF Mono',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;margin:8px 0;">你是一个专业的供应链风险识别专家，基于报价数据的异常模式检测潜在风险，并按严重程度分级标注。
+
+## 角色定位
+你是比价决策的「安全阀」——在其他维度得出"选谁最优"之前，先回答"选谁最危险"。你的输出是采购员风险意识的最后一道防线。
+
+## 输入数据格式
+{
+  "supplier": "供应商名称",
+  "price": 99.00,       // 含税单价（CNY）
+  "delivery": 2         // 交期（天）
+}
+
+## 风险识别规则（按优先级检测）
+| 风险项 | 触发条件 | 等级 |
+|--------|----------|------|
+| 单一供应来源 | N = 1 | 高 |
+| 报价差异极大 | max(price) / min(price) > 3 | 高 |
+| 围标嫌疑 | 所有报价完全相同 | 高 |
+| 交期差异过大 | max(delivery) - min(delivery) > 30天 | 中 |
+| 低价交付风险 | 个别报价偏离 < -25%（低于均价25%以上） | 中 |
+| 无异常 | 以上均不满足 | 低 |
+
+## 风险描述规范
+- 高风险描述以「⚠️」开头，语气严肃、直接
+- 中风险描述包含影响量化说明（如"极差37天，可能影响生产排期"）
+- 低风险描述简洁即可，如"未发现重大风险项，报价数据整体健康"
+
+## 输出格式
+[
+  { "level": "high|medium|low", "desc": "风险描述（含量化数据）" },
+  ...
+]
+
+## 注意事项
+- 多个风险同时存在时，按等级降序排列（高 → 中 → 低）
+- 围标嫌疑和单一来源风险必须并列检测，不可互斥
+- 低价交付风险描述须包含供应商名称和偏离幅度
+
+## 示例（Few-shot）
+输入：
+[
+  {"supplier":"广州东圃衡山","price":99.00,"delivery":2},
+  {"supplier":"深圳华强电子","price":108.00,"delivery":5},
+  {"supplier":"东莞捷信达","price":85.00,"delivery":12}
+]
+输出：
+[
+  {"level":"medium","desc":"交期差异过大：最长12天 vs 最短2天，极差10天，可能影响生产排期协调"},
+  {"level":"medium","desc":"东莞捷信达报价¥85.00低于均价12.7%，需核实低价交付能力和质量保障"}
+]</div>
+
+        <!-- 维度5: 中标方案选择 -->
+        <p style="margin-top:20px;font-weight:700;color:#16a34a;font-size:14px;">▍ 维度五：中标方案选择 Prompt</p>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:16px;font-size:12.5px;line-height:1.7;font-family:'SF Mono',Consolas,monospace;overflow-x:auto;white-space:pre-wrap;margin:8px 0;">你是一个专业的采购决策辅助 Agent，基于前面四个维度的分析结果，自动生成三个差异化中标方案供采购员选择。
+
+## 角色定位
+你是采购决策的「方案设计师」——不替采购员做决定，而是将复杂的多维度数据转化为三个清晰的、有明确取舍关系的方案选项，让采购员在充分知情的情况下做出最终判断。
+
+## 输入数据
+- 完整的供应商报价数据数组（含 supplier / code / price / delivery / selected / material / quantity）
+- priceResult（价格合理性分析结果）
+- supplierResult（供应商推荐排序结果）
+- riskResult（风险提示结果，用于方案风险标注）
+
+## 方案生成规则
+
+### 方案A — 最低价方案（最大节省）
+- 选择逻辑：取报价最低的 1 家供应商
+- 策略标签："成本最小化"
+- 策略说明："以最低报价供应商中标，追求采购成本最小化。适用于非紧急采购、对交期容忍度较高的常规物料。"
+- 风险标注：如该供应商交期 > 7 天，优势中标注"交期偏长（XX天）"；如偏离 < -15%，注意事项标注"需核实低价交付能力"
+
+### 方案B — 综合最优方案（AI推荐）
+- 选择逻辑：取综合评分（价格60%+交期25%+入选15%）最高的 1 家供应商
+- 策略标签："AI综合推荐"
+- 策略说明："以综合评分最高的供应商中标，兼顾价格、交期与历史合作表现。适用于常规采购决策，追求成本与时效的平衡。"
+- 常规标注：低风险
+
+### 方案C — 组合供应方案（风险分散）
+- 选择逻辑：取最低价供应商 + 最快交期供应商组合（如为同一家则取最低价 + 第二快交期）
+- 策略标签："风险分散"
+- 策略说明："以低价供应商和快速交付供应商组合供应，分摊单源风险。适用于对供应连续性和响应速度要求高的关键物料。"
+- 注意事项标注："需协调两家供应商的交付节奏"
+
+## 每个方案的输出字段
+{
+  "id": "A|B|C",
+  "name": "方案名称",
+  "tag": "策略标签",
+  "strategy": "策略说明文字",
+  "suppliers": [{ "name": "供应商名", "price": 数字, "delivery": 数字, "material": "物料名称", "quantity": 采购数量 }],
+  "totalCost": 数字,          // 所选供应商的平均单价
+  "avgDelivery": 数字,        // 所选供应商的平均交期
+  "saveVsAvg": 数字,          // 相对均价的节省百分比（正数=节省，负数=多付）
+  "pros": "优势描述",
+  "cons": "注意事项描述"
+}
+
+## 注意事项
+- 三个方案必须体现明确的取舍关系：方案A看重价格 → 方案B看重均衡 → 方案C看重风险
+- 如果最低价和综合最优是同一供应商，方案A和B可以重叠但策略说明要区分
+- 如果仅 1 家供应商，只生成方案A，标注"仅1家供应商，无法生成多方案对比"
+- 方案B标记为默认推荐（radio预选）
+
+## 示例（Few-shot）
+输入：priceResult.min=85, avg=97.33; supplierResult.recommendation="广州东圃衡山(82.5分)"; 供应商数据同上
+输出：
+[
+  {
+    "id":"A","name":"最低价方案","tag":"成本最小化",
+    "strategy":"以最低报价供应商中标，追求采购成本最小化。适用于非紧急采购。",
+    "suppliers":[{"name":"东莞捷信达","price":85.00,"delivery":12,"material":"工用气缸","quantity":500}],
+    "totalCost":85.00,"avgDelivery":12,"saveVsAvg":12.7,
+    "pros":"单价最低，较均价节省12.7%，500件可节省¥6165",
+    "cons":"交期偏长（12天），需核实低价交付能力"
+  },
+  {
+    "id":"B","name":"综合最优方案","tag":"AI综合推荐",
+    "strategy":"以综合评分最高的供应商中标，兼顾价格、交期与历史合作表现。",
+    "suppliers":[{"name":"广州东圃衡山","price":99.00,"delivery":2,"material":"工用气缸","quantity":500}],
+    "totalCost":99.00,"avgDelivery":2,"saveVsAvg":-1.7,
+    "pros":"交期最短（2天），已入选供应商合作稳定，综合评分82.5分最高",
+    "cons":"单价略高于均价1.7%"
+  },
+  {
+    "id":"C","name":"组合供应方案","tag":"风险分散",
+    "strategy":"以低价供应商和快速交付供应商组合供应，分摊单源风险。",
+    "suppliers":[{"name":"东莞捷信达","price":85.00,"delivery":12,"material":"工用气缸","quantity":500},{"name":"广州东圃衡山","price":99.00,"delivery":2,"material":"工用气缸","quantity":500}],
+    "totalCost":92.00,"avgDelivery":7,"saveVsAvg":5.5,
+    "pros":"兼顾成本与交期，分摊单源风险",
+    "cons":"需协调两家供应商的交付节奏"
+  }
+]</div>
+        <!-- ===== Skill 设计 ===== -->
+        <p style="margin-top:20px;font-weight:700;color:#0d9488;font-size:14px;">▍ Skill 设计（分析能力层）</p>
+        <p>每个 Skill 封装一个完整的分析能力，内部组合 Prompt + Tool 调用，对上层 Agent 暴露统一的「输入数据 → JSON 结果」接口。5 个 Skill 与 5 个维度 Prompt 一一对应：</p>
+        <table class="doc-table">
+          <thead><tr><th style="width:200px;">Skill 名称</th><th>职责</th><th style="width:160px;">调用的 Prompt</th><th style="width:180px;">调用的 Tool</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>price_analysis_skill</code></td>
+              <td>计算均价/偏离率，对标集团最低价与电商参考价，标注异常报价</td>
+              <td>维度一：价格合理性分析 Prompt</td>
+              <td><code>get_comparison_data</code><br><code>query_group_best_price</code><br><code>query_ecommerce_price</code></td>
+            </tr>
+            <tr>
+              <td><code>supplier_ranking_skill</code></td>
+              <td>多维度加权评分，输出推荐排序</td>
+              <td>维度二：供应商推荐排序 Prompt</td>
+              <td><code>get_comparison_data</code><br><code>query_supplier_history</code></td>
+            </tr>
+            <tr>
+              <td><code>risk_detection_skill</code></td>
+              <td>检测报价异常模式，分级标注风险</td>
+              <td>维度四：风险提示 Prompt</td>
+              <td><code>get_comparison_data</code><br><code>check_supplier_risk</code></td>
+            </tr>
+            <tr>
+              <td><code>strategy_advice_skill</code></td>
+              <td>基于价格/推荐/风险结果生成谈判策略</td>
+              <td>维度三：判断策略建议 Prompt</td>
+              <td>依赖前序 Skill 结果<br>（无直接 Tool 调用）</td>
+            </tr>
+            <tr>
+              <td><code>plan_generation_skill</code></td>
+              <td>生成 A/B/C 三方案，用户确认后回传</td>
+              <td>维度五：中标方案选择 Prompt</td>
+              <td>依赖前序 Skill 结果<br><code>sync_award_result</code>（确认后调用）</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ===== Tool 设计 ===== -->
+        <p style="margin-top:20px;font-weight:700;color:#d97706;font-size:14px;">▍ Tool 设计（数据获取与系统交互层）</p>
+        <p>Tool 是 Agent 与外部系统交互的原子操作，每个 Tool 有明确的输入输出契约。</p>
+        <table class="doc-table">
+          <thead><tr><th style="width:210px;">Tool 名称</th><th>职责</th><th>输入</th><th>输出</th><th style="width:180px;">当前实现</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>get_comparison_data</code></td>
+              <td>从比价单页面提取供应商报价数据</td>
+              <td>比价单 DOM 或比价单 ID</td>
+              <td>报价数据数组（supplier / price / delivery / selected / material / quantity）</td>
+              <td>前端 <code>extractAllQuoteData()</code></td>
+            </tr>
+            <tr>
+              <td><code>query_supplier_history</code></td>
+              <td>查询供应商历史采购合作记录（交付准时率、质量合格率、历史报价）</td>
+              <td>供应商编码列表</td>
+              <td>历史表现数据（准时率 / 合格率 / 历史报价次数）</td>
+              <td>后端 API</td>
+            </tr>
+            <tr>
+              <td><code>check_supplier_risk</code></td>
+              <td>查询供应商工商/法律/合规风险信息</td>
+              <td>供应商名称或统一社会信用代码</td>
+              <td>风险标签列表（工商异常 / 法律诉讼 / 行政处罚）</td>
+              <td>后端 API</td>
+            </tr>
+            <tr>
+              <td><code>sync_award_result</code></td>
+              <td>将中标方案通过 postMessage 回传采购系统</td>
+              <td>方案 ID / 名称 / 供应商列表 / 物料 / 策略</td>
+              <td>同步成功 / 失败</td>
+              <td>前端 <code>syncPlanToParent()</code></td>
+            </tr>
+            <tr>
+              <td><code>query_group_best_price</code></td>
+              <td>查询集团采购体系内该物料的历史最低成交价</td>
+              <td>物料名称或物料编码</td>
+              <td>集团历史最低价（含成交时间 / 采购批次）</td>
+              <td>后端 API</td>
+            </tr>
+            <tr>
+              <td><code>query_ecommerce_price</code></td>
+              <td>查询工业品平台（京东工业品 / 震坤行 / 三横商城）该物料售价</td>
+              <td>物料名称或规格型号</td>
+              <td>工业品平台价格（京东工业品 / 震坤行 / 三横商城）</td>
+              <td>后端 API</td>
+            </tr>
+            <tr>
+              <td><code>get_material_groups</code></td>
+              <td>从报价数据中按物料名称去重分组，识别比价单涉及的全部物料</td>
+              <td>报价数据数组</td>
+              <td>物料分组数组 [{name, code, image, count, suppliers}]，含物料编码与图片URL</td>
+              <td>前端 <code>getMaterialGroups()</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ===== 三层协作关系 ===== -->
+        <p style="margin-top:20px;font-weight:700;color:#1a1a1a;font-size:14px;">▍ 三层协作关系</p>
+        <div style="background:#f8f9fb;border-radius:8px;padding:16px;font-size:13px;line-height:1.8;color:#444;margin:8px 0;">
+          <strong>用户触发分析</strong> → 全局调度 Prompt 识别意图 → 调用 <code>get_material_groups</code> 物料分组 → 依次调用 5 个 Skill：<br>
+          &nbsp;&nbsp;① <code>price_analysis_skill</code> → 调用 <code>get_comparison_data</code> + <code>query_group_best_price</code> + <code>query_ecommerce_price</code> → 价格分析 JSON（含多维价格对标）<br>
+          &nbsp;&nbsp;② <code>supplier_ranking_skill</code> → 调用 <code>get_comparison_data</code> + <code>query_supplier_history</code> → 推荐排序 JSON<br>
+          &nbsp;&nbsp;③ <code>risk_detection_skill</code> → 调用 <code>get_comparison_data</code> + <code>check_supplier_risk</code> → 风险列表 JSON<br>
+          &nbsp;&nbsp;④ <code>strategy_advice_skill</code> → 接收 ①②③ 结果 → 策略建议数组<br>
+          &nbsp;&nbsp;⑤ <code>plan_generation_skill</code> → 接收 ①②③结果 → A/B/C 方案 JSON<br>
+          <strong>汇总</strong> → 调用 <code>render_analysis_cards</code> 渲染五张卡片（一~四默认折叠，五默认展开） → 用户在对话中确认方案 → 调用 <code>sync_award_result</code> 回传
+        </div>
+
+        <p><strong>设计原则：</strong></p>
+        <p>
+          (1) <strong>三层解耦</strong> — Prompt 管分析逻辑、Skill 管能力封装、Tool 管数据交互，各层独立演进<br>
+          (2) <strong>维度独立</strong> — 5 个 Skill 各自独立设计 Prompt 和调用的 Tool，可独立调优、A/B 测试或路由到不同模型<br>
+          (3) <strong>角色锚定</strong> — 每个维度有独立的角色定位（温度计 / 裁判 / 参谋 / 安全阀 / 设计师），互不越界<br>
+          (4) <strong>规则透明</strong> — 所有分析逻辑（权重/阈值/计算方式）用伪代码 + 表格写清楚，避免 LLM 幻觉<br>
+          (5) <strong>渐进式落地</strong> — Skill 内部用前端规则引擎实现，Tool 预留接口，接入 LLM 后激活<br>
+          (6) <strong>安全边界</strong> — 免责声明 + 协商式语气 + 不编造数据的三重保护，方案选择始终由采购员确认<br>
+          (7) <strong>Few-shot 示例</strong> — 每个维度 Prompt 附带输入/输出示例，降低 LLM 幻觉概率，确保输出格式一致性<br>
+          (8) <strong>对话式确认</strong> — 方案确认从模态弹窗改为对话流卡片确认 + 自然语言确认，交互更自然，不打断对话上下文
+        </p>
+      </div>
+
+      <div class="doc-section" id="sec-06">
+        <h3>06 — 状态规则</h3>
+        <table class="doc-table"><thead><tr><th>状态</th><th>触发条件</th><th>界面表现</th></tr></thead><tbody>
+        <tr><td>待分析</td><td>页面初次加载，未触发过分析</td><td>抽屉面板展示欢迎语 + 快捷操作入口</td></tr>
+        <tr><td>分析中</td><td>点击分析按钮后</td><td>按钮 loading 态；骨架屏 + 逐条输出动画</td></tr>
+        <tr><td>分析完成</td><td>五维度全部计算完毕</td><td>建议卡片全部展示；按钮恢复常态</td></tr>
+        <tr><td>部分完成</td><td>某维度数据不足无法计算</td><td>可分析维度正常展示；不足维度显示「数据不足，无法分析」</td></tr>
+        <tr><td>用户追问中</td><td>在对话面板输入新问题</td><td>问题发送后显示思考动画；追加新卡片</td></tr>
+        <tr><td>面板关闭</td><td>用户关闭抽屉</td><td>分析结果保留（重新打开仍可见上次结论）</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="doc-section" id="sec-07">
+        <h3>07 — 异常处理</h3>
+        <table class="doc-table"><thead><tr><th>异常场景</th><th>处理方式</th></tr></thead><tbody>
+        <tr><td>页面无报价数据</td><td>提示「当前页面未检测到报价数据，请确认比价单已生成」</td></tr>
+        <tr><td>仅 1 家供应商报价</td><td>价格合理性和供应商推荐模块挂起；风险提示标注「单一供应来源风险」</td></tr>
+        <tr><td>所有报价相同</td><td>提示「多家供应商报价一致，可能存在围标风险，建议核实」</td></tr>
+        <tr><td>报价偏离极大（最高/最低 &gt; 3倍）</td><td>风险模块标红；怀疑数据录入错误或恶意报价</td></tr>
+        <tr><td>交期差异过大（&gt; 30天）</td><td>风险模块标注交期风险；推荐时调整交期权重</td></tr>
+        <tr><td>数据动态刷新后</td><td>提示「页面数据已变更，建议重新分析」；上次分析标记为过期</td></tr>
+        <tr><td>分析超时（&gt; 5秒）</td><td>显示「分析超时，请重试」；保留已完成维度结果</td></tr>
+        <tr><td>Intake 意图模糊</td><td>用户输入非分析意图的消息（如「你好」「今天天气怎么样」），走普通对话模式，不触发全量分析</td></tr>
+        <tr><td>Intake 触发时数据为空</td><td>回复「当前页面未检测到报价数据，请确认比价单已生成」，不执行分析</td></tr>
+        <tr><td>多物料场景某物料仅 1 家供应商</td><td>该物料的价格合理性和供应商推荐模块挂起；总览卡片中标注「单一来源」警告；用户切换至该物料 Tab 时显示降级提示</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="doc-section" id="sec-08">
+        <h3>08 — 验收标准</h3>
+        <table class="doc-table"><thead><tr><th>编号</th><th>验收项</th><th>通过标准</th></tr></thead><tbody>
+        <tr><td><span class="doc-badge-ac">AC-01</span></td><td>Header 入口可见</td><td>AI助手按钮始终可见于 Header 栏右上角</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-02</span></td><td>对话面板滑出</td><td>点击 AI 助手按钮，右侧抽屉面板平滑滑出，采用遮罩不推挤页面</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-03</span></td><td>行内分析入口</td><td>每条报价数据行有 AI 分析按钮，点击后面板打开并加载该行分析</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-04</span></td><td>一键全量分析</td><td>工具栏「一键AI分析」按钮触发全单五维度汇总报告</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-05</span></td><td>五维度输出完整</td><td>每次全量分析输出五张卡片：价格合理性、供应商推荐排序、判断策略建议、风险提示、中标方案选择</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-06</span></td><td>价格偏离标注</td><td>报价偏离均价 &plusmn;15% 以上的行被明确标注（红色 / 橙色）</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-07</span></td><td>供应商排序</td><td>综合得分排序，采购员可直接看到推荐优先级</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-08</span></td><td>风险分级</td><td>风险按高/中/低三级标识，高=红、中=橙、低=绿</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-09</span></td><td>分析速度</td><td>点击按钮到首条建议出现 &lt; 1.5 秒，全部完成 &lt; 3 秒</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-10</span></td><td>面板可关闭</td><td>关闭按钮和点击遮罩层均可关闭面板</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-11</span></td><td>数据过期提示</td><td>切换筛选条件后，上次分析标注「数据已过期」</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-12</span></td><td>需求文档入口</td><td>右上角「需求文档」按钮，点击弹出模态框展示本文档</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-13</span></td><td>A/B/C 方案智能生成</td><td>全量分析后自动生成三个中标方案卡片：方案A（最低价）、方案B（综合最优）、方案C（组合供应）；每个方案展示策略说明、供应商列表、单价/交期/vs均价偏离、优势与注意事项</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-14</span></td><td>方案选择与对话式确认回传</td><td>点击方案卡片即选中（高亮+radio标记）；「确认方案（对话确认）」按钮在对话流中追加确认卡片（策略说明 + 供应商详情表 + 优劣势 + 确认/取消按钮）；用户也可输入「确认方案A」自然语言确认；确认后通过 postMessage 回传采购平台（含方案ID、方案名称、供应商列表、策略说明、总成本），AI 回复确认成功消息</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-15</span></td><td>方案对话式确认卡片</td><td>对话流中追加确认卡片，展示所选方案的策略说明、供应商详情表（单价/交期/评分）、优势与注意事项；支持「✓ 确认采纳」按钮或「确认方案A」自然语言确认；确认后卡片变更为已确认状态（绿色边框），AI 回复同步成功消息</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-16</span></td><td>卡片折叠与默认展开策略</td><td>所有分析卡片支持点击表头折叠/展开，折叠图标有旋转动画；<strong>V2.4 默认展开策略：</strong>一~四（价格/推荐/策略/风险）默认折叠，五（中标方案）默认展开，采购员聚焦决策环节；折叠状态在当前分析会话内保持</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-17</span></td><td>对话 Intake 触发</td><td>在对话输入框中输入「帮我分析这个需求单」「分析当前比价单」「帮我看看这几家供应商」等自然语言，系统识别为全量分析意图并自动触发五维度分析；非分析意图的消息（如「你好」）走普通对话不触发分析</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-18</span></td><td>供应商-物料关联标记</td><td>中标方案卡片中每个供应商旁展示对应物料名称和采购数量（如「工用气缸 × 500」）；对话确认卡片和中标回传数据同步携带物料信息字段</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-19</span></td><td>集团最低价对标</td><td>价格合理性卡片中展示集团历史最低价，同时标注当前最低报价偏离率（高于/低于集团最低价的百分比）</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-20</span></td><td>电商比价参考</td><td>价格合理性卡片中展示京东工业品 / 震坤行 / 三横商城同类物料参考价，同时标注供应商均价偏离率；数据来源标签清晰可见</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-21</span></td><td>多维价格对标同时展示</td><td>当集团最低价和电商参考价均可获取时，在价格合理性卡片底部统一以「多维价格对标」区块呈现，包含底部免责说明</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-22</span></td><td>单物料画像展示</td><td>仅 1 种物料时，欢迎屏显示物料摘要栏（物料图片缩略图 36×36px、物料编码标签、物料名、供应商数、报价条数）；一键分析对话消息自动包含物料编码和名称（如「请对当前比价物料【MAT-001-GQ 工用气缸】」）；分析结果顶部物料信息条同步展示图片+编码+名称</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-23</span></td><td>多物料画像导航</td><td>≥2 种物料时，AI 抽屉顶部显示物料切换 Tab 栏（每个 Tab 标注编码、供应商数）和「多物料总览」入口；总览卡片表格包含图片缩略图(28×28px)和物料编码列；总览视图下同步展示全量合并的五维度分析卡片（含中标方案 A/B/C）；点击 Tab 切换至该物料的独立五维度分析，总览卡片收起、Tab 下物料信息条同步展示对应的图片+编码+名称</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-24</span></td><td>多物料总览准确性</td><td>总览卡片中每个物料的统计数据（最低报价、均价、推荐供应商）与切换到该物料 Tab 后的分析结果一致；风险判定在总览和明细分析中保持一致</td></tr>
+        <tr><td><span class="doc-badge-ac">AC-25</span></td><td>多物料总览分析卡片</td><td>总览视图下渲染完整的五维度分析卡片（价格 / 供应商 / 策略 / 风险 / 中标方案），卡片数据基于全量报价合并计算；中标方案 A/B/C 正常生成且可交互（点击选中、确认按钮激活）；所有卡片适配 420px 窄栏，表格不溢出、方案指标卡片正常换行</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="doc-section" id="sec-09">
+        <h3>09 — 评测集合</h3>
+
+        <p style="margin-bottom:12px;"><strong>评测目标：</strong>验证 AI 分析引擎在各类典型及边界场景下，输出的分析结果是否符合预期目标，确保五个维度的准确性、完整性和决策参考价值。</p>
+
+        <div class="eval-overview">
+          <div class="eval-ov-card">
+            <div class="eval-ov-num">4/4</div>
+            <div class="eval-ov-label">场景类别覆盖</div>
+            <div class="eval-ov-sub">正常 · 边界 · 极限 · 异常</div>
+          </div>
+          <div class="eval-ov-card">
+            <div class="eval-ov-num">5/5</div>
+            <div class="eval-ov-label">分析维度覆盖</div>
+            <div class="eval-ov-sub">价格 · 推荐 · 策略 · 风险 · 方案</div>
+          </div>
+          <div class="eval-ov-card">
+            <div class="eval-ov-num">3/3</div>
+            <div class="eval-ov-label">难度梯度完备</div>
+            <div class="eval-ov-sub">Easy 30% · Medium 40% · Hard 30%</div>
+          </div>
+          <div class="eval-ov-card">
+            <div class="eval-ov-num">&ge; 80%</div>
+            <div class="eval-ov-label">Benchmark 门槛</div>
+            <div class="eval-ov-sub">必过项 100% + 加权分 &ge; 80%</div>
+          </div>
+        </div>
+
+        <p style="font-weight:600;color:#1a1a1a;margin-bottom:10px;">Benchmark 场景矩阵</p>
+        <p style="font-size:12.5px;color:#888;margin-bottom:10px;">以下矩阵展示每个评测用例对五维分析能力的覆盖情况和难度分布，用于衡量评测集本身的设计质量——覆盖越广、难度越均衡，评测结果越有说服力。</p>
+        <div class="bm-matrix">
+          <table><thead><tr>
+            <th style="width:60px">TC-ID</th><th>场景类别</th><th>难度</th>
+            <th style="width:55px">价格</th><th style="width:55px">推荐</th><th style="width:55px">策略</th><th style="width:55px">风险</th><th style="width:55px">方案</th>
+            <th>核心能力考核</th></tr></thead><tbody>
+            <tr><td>TC-01</td><td>正常</td><td><span class="bm-diff-easy">Easy</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">全维度基线校验</td></tr>
+            <tr><td>TC-02</td><td>正常</td><td><span class="bm-diff-med">Medium</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">异常价格检测 + 风险联动</td></tr>
+            <tr><td>TC-03</td><td>边界</td><td><span class="bm-diff-easy">Easy</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">边缘场景降级处理</td></tr>
+            <tr><td>TC-04</td><td>边界</td><td><span class="bm-diff-med">Medium</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">围标嫌疑识别</td></tr>
+            <tr><td>TC-05</td><td>边界</td><td><span class="bm-diff-med">Medium</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">交期-价格权衡</td></tr>
+            <tr><td>TC-06</td><td>正常</td><td><span class="bm-diff-hard">Hard</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">价格vs时效多维权衡</td></tr>
+            <tr><td>TC-07</td><td>极限</td><td><span class="bm-diff-hard">Hard</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">极端偏离 + 定价合理性判断</td></tr>
+            <tr><td>TC-08</td><td>正常</td><td><span class="bm-diff-easy">Easy</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td style="text-align:left;font-size:11.5px;color:#666">Intake 意图识别 + 全量分析链路</td></tr>
+            <tr><td>TC-09</td><td>正常</td><td><span class="bm-diff-easy">Easy</span></td><td class="bm-empty">—</td><td class="bm-empty">—</td><td class="bm-empty">—</td><td class="bm-empty">—</td><td class="bm-chk">●</td><td style="text-align:left;font-size:11.5px;color:#666">物料关联 + 回传数据完整性</td></tr>
+            <tr><td>TC-10</td><td>正常</td><td><span class="bm-diff-med">Medium</span></td><td class="bm-chk">●</td><td class="bm-empty">—</td><td class="bm-empty">—</td><td class="bm-empty">—</td><td class="bm-empty">—</td><td style="text-align:left;font-size:11.5px;color:#666">多维价格对标渲染完整性</td></tr>
+            <tr><td>TC-11</td><td>正常</td><td><span class="bm-diff-med">Medium</span></td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td class="bm-chk">●</td><td style="text-align:left;font-size:11.5px;color:#666">物料画像感知 + 多物料总览分析卡片（含中标方案）</td></tr>
+          </tbody></table>
+        </div>
+
+        <p style="font-size:12.5px;color:#666;margin-bottom:10px;">
+          <strong>Benchmark 设计质量自查：</strong>
+          五维度覆盖 9/11 用例（82%），方案维度专测 TC-09，对标展示专测 TC-10，物料感知专测 TC-11；难度梯度 Easy:Medium:Hard = 4:5:2 ≈ 36%:46%:18%。
+        </p>
+
+        <p style="font-weight:600;color:#1a1a1a;margin-bottom:10px;">评测集</p>
+
+        <!-- TC-01: 标准4家 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-01</span>
+            <span class="eval-tc-title">标准分布：4家报价正常</span>
+            <span class="bm-diff-easy" style="margin-left:auto">Easy</span>
+          </div>
+          <div class="eval-tc-body">
+            <p style="font-size:11.5px;color:#888;margin:0 0 10px;"><strong>考核能力：</strong>全维度基线校验 — 验证五维度分析在标准输入下的完整性和准确性</p>
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A（广州衡山）</td><td class="num">&yen;99.00</td><td class="num">2</td><td>是</td></tr>
+            <tr><td>供应商B（深圳华强）</td><td class="num">&yen;108.00</td><td class="num">5</td><td>否</td></tr>
+            <tr><td>供应商C（东莞捷信达）</td><td class="num">&yen;85.00</td><td class="num">12</td><td>否</td></tr>
+            <tr><td>供应商D（苏州博智达）</td><td class="num">&yen;96.00</td><td class="num">3</td><td>否</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>均价=&yen;97.00；东莞捷信达(&yen;85)偏离-12.4%（橙）；深圳华强(&yen;108)偏离+11.3%（橙）；其余正常（绿）</td></tr>
+            <tr><td>供应商推荐</td><td>第1名：苏州博智达（最优综合）；第2名：广州衡山（入选加分）；第3名：深圳华强；第4名：东莞捷信达（交期拖后腿）</td></tr>
+            <tr><td>风险提示</td><td>交期极差=10天 < 30天，无高风险；整体风险等级：低</td></tr>
+            <tr><td>判断策略建议</td><td>建议以苏州博智达为主选、广州衡山为备选；深圳华强高于均价，建议压价至&yen;97</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 均价计算无误，偏离方向正确 <span class="eval-tag pass">必过</span><br>
+              (2) 供应商排名顺序正确 <span class="eval-tag pass">必过</span><br>
+              (3) 风险等级与交期判断一致 <span class="eval-tag pass">必过</span><br>
+              (4) 判断策略建议至少包含主选/备选和降价建议 <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-02: 价格偏离异常 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-02</span>
+            <span class="eval-tc-title">价格偏离异常：一家严重低于均价</span>
+            <span class="bm-diff-med" style="margin-left:auto">Medium</span>
+          </div>
+          <div class="eval-tc-body">
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A</td><td class="num">&yen;100.00</td><td class="num">3</td><td>否</td></tr>
+            <tr><td>供应商B</td><td class="num">&yen;98.00</td><td class="num">5</td><td>否</td></tr>
+            <tr><td>供应商C</td><td class="num">&yen;55.00</td><td class="num">4</td><td>否</td></tr>
+            <tr><td>供应商D</td><td class="num">&yen;105.00</td><td class="num">2</td><td>否</td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:#888;margin:6px 0 12px;"><strong>考核能力：</strong>异常价格检测与风险联动 — 验证极端偏离价格能否正确触发高风险标注和交付风险提示</p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>均价=&yen;89.50；供应商C偏离-38.5%，必须标注红色异常 + 「低价交付风险」说明</td></tr>
+            <tr><td>供应商推荐</td><td>供应商C价格最低但标注风险；推荐需在结论中权衡价格优势与交付风险</td></tr>
+            <tr><td>风险提示</td><td>高风险 — 低价交付风险；中风险 — 报价偏离极大（105/55=1.9 < 3，不触发极差风险）</td></tr>
+            <tr><td>判断策略建议</td><td>重点提示：超低价需核实供应商交付能力；建议以价格合理供应商为谈判基线</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 供应商C偏离标红，正确计算-38.5% <span class="eval-tag pass">必过</span><br>
+              (2) 风险提示明确包含「低价交付风险」 <span class="eval-tag pass">必过</span><br>
+              (3) 推荐不为纯价格排序，含风险权重考量 <span class="eval-tag conditional">条件过</span><br>
+              (4) 判断策略建议包含对低价供应商交付能力的核实建议 <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-03: 仅1家报价 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id boundary">TC-03</span>
+            <span class="eval-tc-title">边界：仅1家供应商报价</span>
+            <span class="bm-diff-easy" style="margin-left:auto">Easy</span>
+          </div>
+          <div class="eval-tc-body">
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A</td><td class="num">&yen;100.00</td><td class="num">5</td><td>否</td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:#888;margin:6px 0 12px;"><strong>考核能力：</strong>边缘场景降级处理 — 仅1家报价时各维度正确挂起并提示单一供应源风险</p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>「数据不足，无法进行价格对比分析」</td></tr>
+            <tr><td>供应商推荐</td><td>「仅1家供应商，无法进行综合推荐排序」</td></tr>
+            <tr><td>风险提示</td><td>高风险 — 「单一供应来源风险：仅1家报价，存在断供和价格垄断风险，建议扩大寻源」</td></tr>
+            <tr><td>判断策略建议</td><td>「建议扩大供应商寻源范围，至少获取3家以上报价后进行比价」</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 价格合理性和推荐维度正确挂起，显示「数据不足」 <span class="eval-tag pass">必过</span><br>
+              (2) 风险提示明确标注「单一供应来源风险」 <span class="eval-tag pass">必过</span><br>
+              (3) 判断策略建议扩大寻源，而非给出无意义的定价建议 <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-04: 所有报价相同 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id boundary">TC-04</span>
+            <span class="eval-tc-title">边界：所有供应商报价完全相同</span>
+            <span class="bm-diff-med" style="margin-left:auto">Medium</span>
+          </div>
+          <div class="eval-tc-body">
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A</td><td class="num">&yen;100.00</td><td class="num">5</td><td>否</td></tr>
+            <tr><td>供应商B</td><td class="num">&yen;100.00</td><td class="num">3</td><td>否</td></tr>
+            <tr><td>供应商C</td><td class="num">&yen;100.00</td><td class="num">8</td><td>否</td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:#888;margin:6px 0 12px;"><strong>考核能力：</strong>围标嫌疑识别 — 报价完全相同时正确检测异常并提示围标风险</p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>均价=&yen;100.00；所有偏离率=0%，全部标绿（正常）；但需在结论中提示价格完全一致属异常</td></tr>
+            <tr><td>供应商推荐</td><td>按交期排序：供应商B(3天) > 供应商A(5天) > 供应商C(8天)；价格相同，交期成为唯一区分维度</td></tr>
+            <tr><td>风险提示</td><td>高风险 — 「围标嫌疑：3家供应商报价完全相同，建议核实是否存在围标行为」</td></tr>
+            <tr><td>判断策略建议</td><td>建议调查报价来源真实性；以交期作为差异化谈判筹码</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 风险提示明确标注「围标嫌疑」 <span class="eval-tag pass">必过</span><br>
+              (2) 推荐按交期排序 <span class="eval-tag pass">必过</span><br>
+              (3) 价格分析不报错，正常显示偏离率=0% <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-05: 交期差异大 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id boundary">TC-05</span>
+            <span class="eval-tc-title">边界：交期差异极大（> 30天）</span>
+            <span class="bm-diff-med" style="margin-left:auto">Medium</span>
+          </div>
+          <div class="eval-tc-body">
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A</td><td class="num">&yen;100.00</td><td class="num">3</td><td>否</td></tr>
+            <tr><td>供应商B</td><td class="num">&yen;95.00</td><td class="num">7</td><td>否</td></tr>
+            <tr><td>供应商C</td><td class="num">&yen;88.00</td><td class="num">40</td><td>否</td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:#888;margin:6px 0 12px;"><strong>考核能力：</strong>交期-价格权衡 — 交期差异极大时推荐排序中交期权重是否正确体现</p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>均价=&yen;94.33；供应商A偏高等</td></tr>
+            <tr><td>供应商推荐</td><td>第1名：供应商B（价格+交期均衡）；第2名：供应商A；第3名：供应商C（交期严重拖后腿）</td></tr>
+            <tr><td>风险提示</td><td>中风险 — 「交期差异过大：最早3天 vs 最晚40天，极差37天，可能影响生产排期」</td></tr>
+            <tr><td>判断策略建议</td><td>供应商C价格最低但交期过长；建议关注价格与交期的平衡；可考虑分批采购或组合供应</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 风险提示标注「交期差异过大」<span class="eval-tag pass">必过</span><br>
+              (2) 推荐中交期权重差异明显体现 <span class="eval-tag pass">必过</span><br>
+              (3) 判断策略建议提出组合供应方案 <span class="eval-tag conditional">条件过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-06: 最低价+长交期组合 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-06</span>
+            <span class="eval-tc-title">最低价但交期长：价格vs时效权衡</span>
+            <span class="bm-diff-hard" style="margin-left:auto">Hard</span>
+          </div>
+          <div class="eval-tc-body">
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A</td><td class="num">&yen;120.00</td><td class="num">2</td><td>否</td></tr>
+            <tr><td>供应商B</td><td class="num">&yen;115.00</td><td class="num">4</td><td>否</td></tr>
+            <tr><td>供应商C</td><td class="num">&yen;85.00</td><td class="num">18</td><td>否</td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:#888;margin:6px 0 12px;"><strong>考核能力：</strong>价格vs时效多权衡 — 最低价但交期长时能否给出多维度平衡建议而非纯价格推荐</p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>供应商C偏离-20%+，标红异常</td></tr>
+            <tr><td>供应商推荐</td><td>需在结论中权衡：供应商C价格最低(&yen;85)但交期最长(18天)；供应商B价格和交期最均衡</td></tr>
+            <tr><td>风险提示</td><td>中风险 — 供应商C交期偏长(18天)，如紧急需求建议备选快反供应商</td></tr>
+            <tr><td>判断策略建议</td><td>推荐供应商C作为长期供应主选，供应商B作为紧急需求备选；建议向供应商C索要交期缩短方案</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 推荐体现价格+交期综合权衡，不纯粹低价优先 <span class="eval-tag pass">必过</span><br>
+              (2) 策略包含组合供应/分场景采购建议 <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-07: 极端报价偏离 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id extreme">TC-07</span>
+            <span class="eval-tc-title">极限：报价差超3倍</span>
+            <span class="bm-diff-hard" style="margin-left:auto">Hard</span>
+          </div>
+          <div class="eval-tc-body">
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A</td><td class="num">&yen;30.00</td><td class="num">5</td><td>否</td></tr>
+            <tr><td>供应商B</td><td class="num">&yen;95.00</td><td class="num">3</td><td>否</td></tr>
+            <tr><td>供应商C</td><td class="num">&yen;100.00</td><td class="num">4</td><td>否</td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:#888;margin:6px 0 12px;"><strong>考核能力：</strong>极端偏离处理 — 报价3倍差异时的风险标注与定价合理性判断</p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>供应商A偏离-60%，必须标红 + 「极端异常」标注</td></tr>
+            <tr><td>供应商推荐</td><td>风险标注下推荐需额外提示供应商A的低价风险</td></tr>
+            <tr><td>风险提示</td><td>高风险（双重）—「报价差异极大：最高/最低=3.3倍，可能为数据录入错误或恶意报价」+「低价交付风险」</td></tr>
+            <tr><td>判断策略建议</td><td>强烈建议核实供应商A报价真实性；建议数据校验后再做决策</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 触发「报价差异极大」高风险告警 <span class="eval-tag pass">必过</span><br>
+              (2) 价格偏离标注-60% <span class="eval-tag pass">必过</span><br>
+              (3) 策略建议核实数据真实性 <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-08: 对话Intake触发 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-08</span>
+            <span class="eval-tc-title">对话Intake：自然语言唤醒全量分析</span>
+            <span class="bm-diff-easy" style="margin-left:auto">Easy</span>
+          </div>
+          <div class="eval-tc-body">
+            <p style="font-size:11.5px;color:#888;margin:0 0 10px;"><strong>考核能力：</strong>Intake意图识别 — 验证自然语言触发全量分析的链路完整性和非分析消息的正确分流</p>
+            <div class="eval-tc-sub input">输入数据</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              用户在对话输入框中输入以下唤醒词之一：<br>
+              (a) "帮我分析这个需求单"<br>
+              (b) "分析当前比价单"<br>
+              (c) "帮我看看这几家供应商"<br>
+              当前页面存在 4 家供应商报价数据（TC-01 数据集）
+            </p>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>Intake 识别</td><td>系统正确识别为全量分析意图，触发 runAnalysis(data, 'full')，而非走普通对话模式</td></tr>
+            <tr><td>分析输出</td><td>与 TC-01 全量分析输出一致：五张卡片完整展示，分析结果置顶显示</td></tr>
+            <tr><td>对话记录</td><td>用户消息（唤醒词）以用户气泡展示，AI 回复以分析卡片形式展示，对话历史完整可追溯</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 三种唤醒词均可正确识别并触发全量分析 <span class="eval-tag pass">必过</span><br>
+              (2) 非唤醒词（如「你好」「今天天气怎么样」）不触发全量分析，走普通对话 <span class="eval-tag pass">必过</span><br>
+              (3) 分析结果自动置顶，对话可从上到下阅读 <span class="eval-tag pass">必过</span><br>
+              (4) 页面无数据时回复提示而非执行分析 <span class="eval-tag conditional">条件过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-09: 物料关联标记 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-09</span>
+            <span class="eval-tc-title">供应商-物料关联：方案卡片展示物料信息</span>
+            <span class="bm-diff-easy" style="margin-left:auto">Easy</span>
+          </div>
+          <div class="eval-tc-body">
+            <p style="font-size:11.5px;color:#888;margin:0 0 10px;"><strong>考核能力：</strong>物料关联标记 — 验证供应商-物料关联展示的准确性和回传数据中物料字段的完整性</p>
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>物料</th><th class="num">数量</th><th>是否入选</th></tr></thead><tbody>
+            <tr><td>供应商A（广州衡山）</td><td class="num">¥99.00</td><td class="num">2</td><td>工用气缸</td><td class="num">500</td><td>是</td></tr>
+            <tr><td>供应商B（深圳华强）</td><td class="num">¥108.00</td><td class="num">5</td><td>工用气缸</td><td class="num">500</td><td>否</td></tr>
+            <tr><td>供应商C（东莞捷信达）</td><td class="num">¥85.00</td><td class="num">12</td><td>工用气缸</td><td class="num">500</td><td>否</td></tr>
+            <tr><td>供应商D（苏州博智达）</td><td class="num">¥96.00</td><td class="num">3</td><td>工用气缸</td><td class="num">500</td><td>否</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>中标方案选择</td><td>三个方案（A/B/C）的供应商卡片中，每个供应商名称旁展示物料标签（如「工用气缸 × 500」），以黄色背景小标签呈现</td></tr>
+            <tr><td>确认卡片</td><td>对话确认卡片中供应商详情表展示物料名称和采购数量列</td></tr>
+            <tr><td>postMessage 回传</td><td>details 数组中每个 supplier 对象携带 material 和 quantity 字段</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 方案卡片中每个供应商旁显示物料标签，格式为「物料名 × 数量」 <span class="eval-tag pass">必过</span><br>
+              (2) 确认卡片表中包含物料和数量列 <span class="eval-tag pass">必过</span><br>
+              (3) postMessage 回传数据包含 material 和 quantity 字段 <span class="eval-tag pass">必过</span><br>
+              (4) 物料标签样式区分于供应商名称标签（黄色 vs 蓝色） <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- TC-10: 多维价格对标 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-10</span>
+            <span class="eval-tc-title">多维价格对标：集团最低价 + 三平台电商参考价展示</span>
+            <span class="bm-diff-med" style="margin-left:auto">Medium</span>
+          </div>
+          <div class="eval-tc-body">
+            <p style="font-size:11.5px;color:#888;margin:0 0 10px;"><strong>考核能力：</strong>多维价格对标展示 — 验证集团最低价+三平台参考价的渲染完整性、计算准确性和免责说明</p>
+            <div class="eval-tc-sub input">输入数据</div>
+            <table class="eval-mini-table"><thead><tr><th>供应商</th><th class="num">含税单价</th><th class="num">交期(天)</th><th>物料</th><th class="num">数量</th></tr></thead><tbody>
+            <tr><td>供应商A（广州衡山）</td><td class="num">¥99.00</td><td class="num">2</td><td>工用气缸</td><td class="num">500</td></tr>
+            <tr><td>供应商B（深圳华强）</td><td class="num">¥108.00</td><td class="num">5</td><td>工用气缸</td><td class="num">500</td></tr>
+            <tr><td>供应商C（东莞捷信达）</td><td class="num">¥85.00</td><td class="num">12</td><td>工用气缸</td><td class="num">500</td></tr>
+            <tr><td>供应商D（苏州博智达）</td><td class="num">¥96.00</td><td class="num">3</td><td>工用气缸</td><td class="num">500</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub expected">预期输出</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>价格合理性</td><td>报价概况下方展示「多维价格对标」区块，包含集团历史最低价（基于最低报价 ¥85 的 88% 约 ¥74.80）、京东工业品参考价（基于均价 ¥97 的 108% 约 ¥104.76）、震坤行参考价（基于均价 ¥97 的 92% 约 ¥89.24）、三横商城参考价（基于均价 ¥97 的 95% 约 ¥92.15）；每个参考价旁标注偏离方向和百分比</td></tr>
+            <tr><td>数据来源标签</td><td>每个参考价右侧展示数据源标签：「集团采购价格库」「京东工业品」「震坤行」「三横商城」，以浅灰色小标签呈现</td></tr>
+            <tr><td>免责说明</td><td>对标区块底部展示免责文字：「以上为外部参考数据，仅供议价参考，实际价格以供应商报价和集团价格库为准」</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub criteria">通过标准</div>
+            <p style="font-size:12.5px;line-height:1.7;color:#555;">
+              (1) 价格合理性卡片中包含「多维价格对标」独立区块（浅灰背景圆角边框） <span class="eval-tag pass">必过</span><br>
+              (2) 集团最低价显示正确，偏离方向与百分比计算无误 <span class="eval-tag pass">必过</span><br>
+              (3) 京东工业品、震坤行和三横商城参考价均显示，各带数据来源标签 <span class="eval-tag pass">必过</span><br>
+              (4) 底部免责说明文字存在且完整 <span class="eval-tag pass">必过</span>
+            </p>
+          </div>
+        </div>
+
+        <p style="margin-top:18px;font-weight:600;color:#1a1a1a;">评测方法</p>
+        <div class="eval-method">
+          <div class="eval-method-title">自动化评测流程</div>
+          <p>
+            <strong>(1) 准备：</strong>创建评测数据 JSON 文件（8 组输入数据 + 预期输出描述）<br>
+            <strong>(2) 注入：</strong>将每组输入数据写入页面 DOM（动态替换 <code>#dataTable tbody</code> 的数据行，含 <code>data-*</code> 属性）<br>
+            <strong>(3) 触发：</strong>调用 <code>triggerFullAnalysis()</code>，等待渲染完成<br>
+            <strong>(4) 提取：</strong>从抽屉面板 DOM 中提取五张 analysis-card 的文本内容<br>
+            <strong>(5) 比对：</strong>将输出与预期结果逐一比对，包含：数值正确性（均价/偏离率/评分）、语义完整性（风险关键词/策略方向）、格式合规性（卡片结构/免责声明/物料标签）
+          </p>
+        </div>
+        <div class="eval-method">
+          <div class="eval-method-title">人工复核流程</div>
+          <p>
+            <strong>(1) 盲审：</strong>评审人不知晓预期结果，独立审查输出卡片<br>
+            <strong>(2) 打分：</strong>对五个维度分别打分（0-5分），含：准确性 / 可读性 / 可操作性<br>
+            <strong>(3) 对齐：</strong>两人交叉评审，差异项讨论到一致<br>
+            <strong>(4) 归档：</strong>通过 / 不通过 / 条件通过，结果记录到评测报告
+          </p>
+        </div>
+
+        <!-- TC-11: 物料感知 -->
+        <div class="eval-testcase">
+          <div class="eval-tc-header">
+            <span class="eval-tc-id normal">TC-11</span>
+            <span class="eval-tc-title">物料画像感知与多物料 Tab 切换</span>
+            <span class="bm-diff-med" style="margin-left:auto">Medium</span>
+          </div>
+          <div class="eval-tc-body">
+            <p style="font-size:11.5px;color:#888;margin:0 0 10px;"><strong>考核能力：</strong>物料画像 — 验证单物料/多物料场景下物料编码、图片缩略图在各模块的透出，以及 Tab 导航和总览卡片的数据一致性</p>
+            <div class="eval-tc-sub input">输入数据</div>
+            <p style="font-size:12.5px;color:#555;">子场景 A（单物料）：比价表仅含「工用气缸」4 家供应商（物料编码 MAT-001-GQ，含物料图片 SVG）</p>
+            <p style="font-size:12.5px;color:#555;">子场景 B（多物料）：比价表含 2 种物料——「工用气缸」4 家（¥85/¥96/¥99/¥108，物料编码 MAT-001-GQ）、「液压阀」3 家（¥185/¥200/¥210，物料编码 MAT-002-YYF），各含物料图片</p>
+            <div class="eval-tc-sub expected">预期输出（子场景 A）</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>欢迎屏</td><td>显示物料摘要栏：物料图片缩略图(36×36px) + 物料编码标签「MAT-001-GQ」+ 「工用气缸 4家供应商报价 共4条报价」</td></tr>
+            <tr><td>一键分析消息</td><td>对话消息为「请对当前比价物料【MAT-001-GQ 工用气缸】共 4 家供应商的报价进行全量分析」</td></tr>
+            <tr><td>分析结果</td><td>分析卡片上方显示物料信息条（蓝色底纹）：物料图片缩略图 + 编码标签 + 物料名 + 供应商数 + 报价条数</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub expected" style="margin-top:12px;">预期输出（子场景 B）</div>
+            <table class="eval-mini-table"><thead><tr><th>维度</th><th>预期结果</th></tr></thead><tbody>
+            <tr><td>Tab 栏</td><td>AI 抽屉顶部显示「📊 多物料总览」+「工用气缸 4家 MAT-001-GQ」+「液压阀 3家 MAT-002-YYF」三个 Tab</td></tr>
+            <tr><td>总览卡片</td><td>跨物料表格展示：图片缩略图(28×28px) / 物料编码 / 物料名称 / 供应商数 / 最低报价 / 均价 / 推荐供应商 / 风险等级；工用气缸最低 ¥85（编码 MAT-001-GQ）、液压阀最低 ¥185（编码 MAT-002-YYF）</td></tr>
+            <tr><td>总览分析卡片</td><td>总览表格下方渲染全量合并的五维度分析卡片（一、价格合理性 / 二、供应商推荐排序 / 三、判断策略建议 / 四、风险提示）和 五、中标方案选择（方案 A/B/C），中标方案可点击选中</td></tr>
+            <tr><td>Tab 切换</td><td>点击「工用气缸」Tab → 总览卡片收起、显示该物料图片 + 编码信息条 + 独立分析（仅含 4 家报价）；点击「液压阀」Tab 同理；点击「📊 多物料总览」Tab → 独立分析收起、恢复总览视图</td></tr>
+            <tr><td>总览准确性</td><td>总览中工用气缸最低价 ¥85 与工用气缸 Tab 中价格分析结果一致；物料编码与各行数据匹配</td></tr>
+            <tr><td>窄栏适配</td><td>所有分析卡片在 420px 抽屉中正常展示：表格不溢出（横向滚动）、中标方案指标卡片自适应换行、多维价格对标行自动折行</td></tr>
+            <tr><td>默认折叠（V2.4）</td><td>一~四（价格/推荐/策略/风险）默认折叠，五（中标方案）默认展开；点击表头可展开/折叠</td></tr>
+            <tr><td>对话式确认（V2.4）</td><td>选中方案 → 点击「确认方案（对话确认）」→ 对话流追加确认卡片（策略+供应商表+优劣+确认/取消按钮），无弹窗；输入「确认方案A」可自然语言确认</td></tr>
+            </tbody></table>
+            <div class="eval-tc-sub verify">验证条件</div>
+            <p style="font-size:12.5px;line-height:1.8;color:#555;">
+              (1) 单物料：欢迎屏显示物料信息栏（含图片+编码），不显示 Tab 栏 <span class="eval-tag pass">必过</span><br>
+              (2) 单物料：对话消息和卡片标题中包含物料编码和名称 <span class="eval-tag pass">必过</span><br>
+              (3) 多物料：Tab 栏正确显示所有物料（含编码和供应商数） <span class="eval-tag pass">必过</span><br>
+              (4) 多物料：总览卡片包含图片列和编码列，数据与各 Tab 内分析一致 <span class="eval-tag pass">必过</span><br>
+              (5) 多物料：总览视图下五维度分析卡片全部渲染（含中标方案 A/B/C） <span class="eval-tag pass">必过</span><br>
+              (6) 多物料：切换 Tab 后物料信息条正确显示该物料的图片+编码+名称，总览卡片收起 <span class="eval-tag pass">必过</span><br>
+              (7) 多物料：点击「多物料总览」Tab 恢复总览视图（表格 + 分析卡片） <span class="eval-tag cond">条件过</span><br>
+              (8) 窄栏适配：420px 抽屉下所有卡片正常展示，无溢出遮挡 <span class="eval-tag cond">条件过</span><br>
+              (9) V2.4 默认折叠：一~四折叠、五展开，点击表头可切换 <span class="eval-tag pass">必过</span><br>
+              (10) V2.4 对话式确认：选中方案后确认卡片在对话流中展示（非弹窗），含策略+供应商表+优劣 <span class="eval-tag pass">必过</span><br>
+              (11) V2.4 自然语言确认：输入「确认方案A」可触发确认并回传 <span class="eval-tag cond">条件过</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="eval-threshold">
+          <div class="eval-threshold-title">Benchmark 加权评分规则</div>
+          <p style="font-size:12.5px;color:#666;margin-bottom:10px;">评测总分按难度加权计算，高难度用例得权重更高，避免「easy 用例刷分」现象，真正反映系统在复杂场景下的表现质量。</p>
+          <table class="bm-score-table"><thead><tr><th>维度</th><th class="num">权重</th><th>考核重点</th></tr></thead><tbody>
+          <tr><td>价格合理性</td><td class="num">25%</td><td>报价准确性直接影响采购成本，偏离标注重错后果严重</td></tr>
+          <tr><td>供应商推荐排序</td><td class="num">25%</td><td>推荐偏差直接导致供应商选择失误，影响采购决策质量</td></tr>
+          <tr><td>风险提示</td><td class="num">25%</td><td>漏报高风险可能造成重大事故，风险分类和等级判定不容有失</td></tr>
+          <tr><td>判断策略建议</td><td class="num">15%</td><td>策略偏差影响谈判方向，但留有采购员自主判断空间</td></tr>
+          <tr><td>中标方案选择</td><td class="num">10%</td><td>方案生成基于前四个维度，侧重格式完整性和数据回传正确性</td></tr>
+          </tbody></table>
+          <p style="margin-top:12px;font-weight:600;font-size:13px;">评分公式</p>
+          <p style="font-size:12.5px;line-height:1.8;color:#555;">
+            每题得分 = (必过项通过数 / 必过项总数) × 100 × 难度系数<br>
+            难度系数：<span class="bm-diff-easy">Easy = 1.0</span> &nbsp; <span class="bm-diff-med">Medium = 1.2</span> &nbsp; <span class="bm-diff-hard">Hard = 1.5</span><br>
+            <strong>总分 = Σ(维度得分 × 维度权重) / 总权重</strong>
+          </p>
+        </div>
+
+        <div class="eval-threshold">
+          <div class="eval-threshold-title">Benchmark 通过门槛</div>
+          <table class="eval-mini-table"><thead><tr><th>指标</th><th>门槛</th><th>说明</th></tr></thead><tbody>
+          <tr><td><strong>必过项通过率</strong></td><td class="num"><strong>100%</strong></td><td>TC-01~11 共 40 个必过项，不可有任何失败</td></tr>
+          <tr><td><strong>条件过项通过率</strong></td><td class="num"><strong>&ge; 83%</strong></td><td>TC-01~11 共 8 个条件过项，至少通过 7 个</td></tr>
+          <tr><td><strong>加权总分</strong></td><td class="num"><strong>&ge; 80%</strong></td><td>按维度权重 + 难度系数加权计算，低于 80% 视为未通过</td></tr>
+          <tr><td><strong>输出结构完整性</strong></td><td class="num"><strong>100%</strong></td><td>每次分析五张卡片全部渲染，无缺漏维度</td></tr>
+          </tbody></table>
+        </div>
+
+        <p style="margin-top:14px;font-size:12.5px;color:#888;line-height:1.7;">
+          <strong>用例分类说明：</strong>
+          <span class="eval-tc-id normal" style="font-size:10px;padding:1px 8px;vertical-align:middle;">normal</span> 正常场景（TC-01/02/06/08/09/10/11）—
+          <span class="eval-tc-id boundary" style="font-size:10px;padding:1px 8px;vertical-align:middle;">boundary</span> 边界场景（TC-03/04/05）—
+          <span class="eval-tc-id extreme" style="font-size:10px;padding:1px 8px;vertical-align:middle;">extreme</span> 极限场景（TC-07）<br>
+          <span style="display:inline-block;margin-top:8px;">
+            <strong>难度等级图例：</strong>
+            <span class="bm-diff-easy">Easy</span> 基础功能确认，预期快速通过 &nbsp;
+            <span class="bm-diff-med">Medium</span> 异常/边界处理，需要正确识别和应对 &nbsp;
+            <span class="bm-diff-hard">Hard</span> 复杂多维权衡，考验系统分析深度和推理能力
+          </span>
+        </p>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== 确认中标弹窗（V2.4 已废弃，改为对话流卡片确认，保留 HTML 兼容旧调用） ============== -->
+<div class="sel-confirm-dialog" id="selConfirmDialog">
+  <div class="dlg-box">
+    <div class="dlg-title">确认中标方案</div>
+    <div class="dlg-body" id="selConfirmBody"></div>
+    <div class="dlg-actions">
+      <button onclick="cancelSelection()" style="padding:8px 20px;border-radius:6px;border:1px solid #d9d9d9;background:#fff;color:#666;font-size:13px;cursor:pointer">取消</button>
+      <button onclick="confirmSelection()" style="padding:8px 20px;border-radius:6px;border:none;background:#16a34a;color:#fff;font-size:13px;cursor:pointer;font-weight:500">确认中标</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================== -->
+<!--  JavaScript  -->
+<!-- =========================================== -->
+<script>
+(function() {
+  'use strict';
+
+  /* ===== State ===== */
+  var lastAnalysis = null;
+  var isAnalyzing = false;
+  var dataStale = false;
+
+  /* ===== DOM Helpers ===== */
+  function $(id) { return document.getElementById(id); }
+
+  /* ===== Utility Functions ===== */
+  function fmtPrice(val) { return '¥' + Number(val).toFixed(2); }
+
+  function escapeHtml(str) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+
+  var triggerIcons = {
+    full: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    clock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+
+  /* ===== Drawer Toggle ===== */
+  window.openAIDrawer = function() {
+    $('aiDrawer').classList.add('open');
+    $('aiOverlay').classList.add('active');
+    if (dataStale && lastAnalysis) renderStaleNotice();
+    /* V2.2: 欢迎屏物料画像 */
+    updateWelcomeMaterialBar();
+  };
+
+  function updateWelcomeMaterialBar() {
+    var bar = $('welcomeMaterialBar');
+    if (!bar) return;
+    var data = extractAllQuoteData();
+    var mats = getMaterialGroups(data);
+    if (mats.length === 1) {
+      bar.style.display = 'flex';
+      /* 图片缩略图 */
+      var imgHtml = mats[0].image ? '<img class="mi-thumb" src="' + mats[0].image + '" alt="' + mats[0].name + '">' : '';
+      var codeHtml = mats[0].code ? '<span class="mi-code">' + mats[0].code + '</span>' : '';
+      $('welcomeMatImage').innerHTML = imgHtml;
+      $('welcomeMatName').innerHTML = codeHtml + ' ' + mats[0].name;
+      $('welcomeMatDetail').innerText = mats[0].suppliers.length + '家供应商报价';
+      $('welcomeMatCount').innerText = '共' + data.length + '条报价';
+    } else if (mats.length > 1) {
+      bar.style.display = 'flex';
+      /* 多物料：显示物料数 + 代表图 */
+      if (mats[0].image) {
+        $('welcomeMatImage').innerHTML = '<img class="mi-thumb" src="' + mats[0].image + '" alt="' + mats[0].name + '" style="opacity:.7">';
+      } else {
+        $('welcomeMatImage').innerHTML = '';
+      }
+      var codeList = mats.map(function(m) { return m.code || m.name; }).join(' / ');
+      $('welcomeMatName').innerHTML = '<span class="mi-code">' + codeList + '</span> ' + mats.length + '种物料';
+      $('welcomeMatDetail').innerText = mats.map(function(m) { return m.name; }).join('、');
+      $('welcomeMatCount').innerText = '共' + data.length + '条报价';
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  window.closeAIDrawer = function() {
+    $('aiDrawer').classList.remove('open');
+    $('aiOverlay').classList.remove('active');
+  };
+
+  /* ===== Card Collapse ===== */
+  window.toggleCard = function(headerEl) {
+    var card = headerEl.closest('.analysis-card');
+    if (card) card.classList.toggle('collapsed');
+  };
+
+  /* ===== Plan Generation ===== */
+  function generatePlans(data, sr, pr) {
+    var plans = [];
+    if (!sr.scores || sr.scores.length === 0) return plans;
+
+    var sortedByPrice = data.slice().sort(function(a, b) { return a.price - b.price; });
+    var sortedByScore = sr.scores.slice();
+    var avg = pr.avg;
+
+    /* Plan A: 最低价方案 */
+    var cheapest = sortedByPrice[0];
+    var aRisk = cheapest.delivery > 7 ? '中风险' : '低风险';
+    var aSaveVsAvg = ((avg - cheapest.price) / avg * 100).toFixed(1);
+    plans.push({
+      id: 'A',
+      name: '最低价方案',
+      tag: '最大节省',
+      strategy: '选择报价最低的供应商，追求采购成本最小化。适用于非紧急采购、对交期容忍度较高的场景。',
+      suppliers: [makeSupplierObj(data, sr, cheapest.supplier, cheapest.price, cheapest.delivery)],
+      totalCost: cheapest.price,
+      avgDelivery: cheapest.delivery,
+      riskLevel: aRisk,
+      saveVsAvg: aSaveVsAvg,
+      pros: '采购成本最低，较均价节省 ' + aSaveVsAvg + '%',
+      cons: cheapest.delivery > 7 ? '交期较长（' + cheapest.delivery + '天），存在交付延迟风险' : '供应商单一，存在供应集中风险'
+    });
+
+    /* Plan B: 综合最优方案 */
+    var best = sortedByScore[0];
+    var bRisk = '低风险';
+    var bSaveVsAvg = ((avg - best.price) / avg * 100).toFixed(1);
+    plans.push({
+      id: 'B',
+      name: '综合最优方案',
+      tag: 'AI推荐',
+      strategy: '根据价格（60%）+ 交期（25%）+ 入选加分（15%）综合评分最高的供应商。兼顾成本、时效与可靠性。',
+      suppliers: [makeSupplierObj(data, sr, best.supplier, best.price, best.delivery)],
+      totalCost: best.price,
+      avgDelivery: best.delivery,
+      riskLevel: bRisk,
+      saveVsAvg: bSaveVsAvg,
+      pros: '综合评分最高（' + best.totalScore + '分），价格与交期均衡',
+      cons: parseFloat(bSaveVsAvg) < 0 ? '价格高于均价 ' + Math.abs(parseFloat(bSaveVsAvg)) + '%，非最低价' : '非最低价选择，较最低价高 ' + (best.price - cheapest.price).toFixed(2) + ' 元'
+    });
+
+    /* Plan C: 组合供应方案 */
+    if (data.length >= 2) {
+      var comboSuppliers = [];
+      var fastDeliveries = data.slice().sort(function(a, b) { return a.delivery - b.delivery; });
+      comboSuppliers.push(makeSupplierObj(data, sr, cheapest.supplier, cheapest.price, cheapest.delivery));
+      if (fastDeliveries[0].supplier !== cheapest.supplier) {
+        comboSuppliers.push(makeSupplierObj(data, sr, fastDeliveries[0].supplier, fastDeliveries[0].price, fastDeliveries[0].delivery));
+      } else if (fastDeliveries.length > 1) {
+        comboSuppliers.push(makeSupplierObj(data, sr, fastDeliveries[1].supplier, fastDeliveries[1].price, fastDeliveries[1].delivery));
+      }
+      var cTotalCost = comboSuppliers.reduce(function(s, d) { return s + d.price; }, 0) / comboSuppliers.length;
+      var cAvgDelivery = comboSuppliers.reduce(function(s, d) { return s + d.delivery; }, 0) / comboSuppliers.length;
+      var cSaveVsAvg = ((avg - cTotalCost) / avg * 100).toFixed(1);
+      var cSupplierNames = comboSuppliers.map(function(s) { return s.name; });
+      plans.push({
+        id: 'C',
+        name: '组合供应方案',
+        tag: '风险分散',
+        strategy: '选择低价供应商 + 快速交付供应商组合，分摊供应风险。适用于对供应连续性要求高的关键物料采购。',
+        suppliers: comboSuppliers,
+        totalCost: cTotalCost,
+        avgDelivery: cAvgDelivery,
+        riskLevel: '低风险',
+        saveVsAvg: cSaveVsAvg,
+        pros: '双供应商保障，交期与成本兼顾，降低断供风险',
+        cons: '协调成本增加，需管理两家供应商的交付质量'
+      });
+    }
+
+    return plans;
+  }
+
+  function getScoreByName(sr, name) {
+    if (!sr.scores) return 0;
+    for (var i = 0; i < sr.scores.length; i++) {
+      if (sr.scores[i].supplier === name) return sr.scores[i].totalScore;
+    }
+    return 0;
+  }
+
+  function getMaterialByName(data, name) {
+    for (var i = 0; i < data.length; i++) {
+      if (data[i].supplier === name) return { material: data[i].material || '', quantity: data[i].quantity || 0 };
+    }
+    return { material: '', quantity: 0 };
+  }
+
+  function makeSupplierObj(data, sr, name, price, delivery) {
+    var mat = getMaterialByName(data, name);
+    return { name: name, price: price, delivery: delivery, score: getScoreByName(sr, name), material: mat.material, quantity: mat.quantity };
+  }
+
+  var selectedPlan = null;
+  var currentPlans = [];
+
+  window.selectPlan = function(planId) {
+    selectedPlan = planId;
+    currentPlans.forEach(function(p) {
+      var card = document.getElementById('plan-card-' + p.id);
+      if (card) card.classList.toggle('selected', p.id === planId);
+    });
+    var btn = document.getElementById('planConfirmBtn');
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    var countEl = document.getElementById('planCount');
+    if (countEl) {
+      var plan = currentPlans.filter(function(p) { return p.id === planId; })[0];
+      if (plan) countEl.textContent = '已选择方案 ' + plan.id + '：' + plan.name;
+    }
+    /* V2.4: 不再即时回传，仅选中。确认回传在 confirmPlanInChat 中执行 */
+  }
+
+  function syncPlanToParent(planId) {
+    var plan = currentPlans.filter(function(p) { return p.id === planId; })[0];
+    if (!plan) return;
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          action: 'plan_selected',
+          planId: planId,
+          planName: plan.name,
+          suppliers: plan.suppliers.map(function(s) { return s.name; }),
+          details: plan.suppliers.map(function(s) { return { supplier: s.name, price: s.price, delivery: s.delivery, score: s.score, material: s.material, quantity: s.quantity }; }),
+          strategy: plan.strategy,
+          totalCost: plan.totalCost,
+          timestamp: new Date().toISOString()
+        }, '*');
+      }
+      var syncTip = document.getElementById('planSyncedTip');
+      if (syncTip) {
+        syncTip.innerHTML = '&#10003; 方案 ' + planId + ' 已同步至采购系统（' + plan.suppliers.map(function(s) { return s.name; }).join('、') + '）';
+        syncTip.classList.add('show');
+        setTimeout(function() { syncTip.classList.remove('show'); }, 4000);
+      }
+    } catch(e) {}
+  }
+
+  /* V2.4: 对话流方案确认 — 替代模态弹窗 */
+  window.openPlanConfirmDialog = function() {
+    if (!selectedPlan) return;
+    var plan = currentPlans.filter(function(p) { return p.id === selectedPlan; })[0];
+    if (!plan) return;
+
+    var body = $('drawerBody');
+    if (!body) return;
+
+    /* AI 消息头 */
+    var h = '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">';
+    h += '您选择了 <strong>方案 ' + plan.id + '：' + plan.name + '</strong>，请确认以下方案详情：</div></div>';
+
+    /* 确认卡片 */
+    h += '<div class="plan-confirm-card" id="planConfirmCard">';
+    h += '<div class="pc-header">📋 方案 ' + plan.id + ' — ' + plan.name + '（' + plan.tag + '）</div>';
+    h += '<div class="pc-body">';
+    h += '<div class="pc-strategy">' + plan.strategy + '</div>';
+    h += '<table class="pc-table"><thead><tr><th>供应商</th><th>物料</th><th>单价</th><th>交期</th><th>评分</th></tr></thead><tbody>';
+    for (var i = 0; i < plan.suppliers.length; i++) {
+      var s = plan.suppliers[i];
+      h += '<tr><td>' + s.name + '</td><td style="font-size:11px;color:#666">' + (s.material || '-') + (s.quantity ? ' ×' + s.quantity : '') + '</td><td style="text-align:right;font-weight:500">¥' + s.price.toFixed(2) + '</td><td style="text-align:right">' + s.delivery + ' 天</td><td style="text-align:right">' + s.score + '</td></tr>';
+    }
+    h += '</tbody></table>';
+    h += '<div class="pc-pros-cons"><div class="pc-pros"><strong>优势：</strong>' + plan.pros + '</div><div class="pc-cons"><strong>注意：</strong>' + plan.cons + '</div></div>';
+    h += '<div class="pc-actions">';
+    h += '<button class="pc-btn-confirm" onclick="confirmPlanInChat()">✓ 确认采纳</button>';
+    h += '<button class="pc-btn-cancel" onclick="cancelPlanConfirm()">再看看</button>';
+    h += '</div>';
+    h += '<div class="pc-note">确认后将通过 postMessage 同步至采购系统，采购平台自动勾选对应供应商。您也可以直接输入「确认方案' + plan.id + '」来完成确认。</div>';
+    h += '</div></div>';
+
+    var c = document.createElement('div');
+    c.innerHTML = h;
+    body.appendChild(c);
+    body.scrollTop = body.scrollHeight;
+  };
+
+  /* V2.4: 对话流确认 — 执行回传 */
+  window.confirmPlanInChat = function() {
+    if (!selectedPlan) return;
+    var plan = currentPlans.filter(function(p) { return p.id === selectedPlan; })[0];
+    if (!plan) return;
+
+    /* 回传采购系统 */
+    syncPlanToParent(selectedPlan);
+
+    /* 更新确认卡片状态 */
+    var card = document.getElementById('planConfirmCard');
+    if (card) {
+      card.classList.add('confirmed');
+      var note = card.querySelector('.pc-note');
+      if (note) note.innerHTML = '✓ 方案 ' + plan.id + '（' + plan.name + '）已确认并同步至采购系统。供应商：' + plan.suppliers.map(function(s) { return s.name; }).join('、');
+    }
+
+    /* AI 确认成功消息 */
+    var body = $('drawerBody');
+    if (body) {
+      var h = '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">';
+      h += '✅ <strong>方案 ' + plan.id + ' 已确认</strong>，已同步至采购平台。<br>';
+      h += '策略：' + plan.strategy.substring(0, 60) + '...<br>';
+      h += '供应商：' + plan.suppliers.map(function(s) { return s.name; }).join('、') + '<br>';
+      h += '<span style="font-size:11.5px;color:#888;">采购平台将自动勾选对应供应商并填入方案策略，您可以在比价单中查看同步结果。</span>';
+      h += '</div></div>';
+      var c = document.createElement('div');
+      c.innerHTML = h;
+      body.appendChild(c);
+      body.scrollTop = body.scrollHeight;
+    }
+  };
+
+  /* V2.4: 取消确认 */
+  window.cancelPlanConfirm = function() {
+    var card = document.getElementById('planConfirmCard');
+    if (card) card.remove();
+    var body = $('drawerBody');
+    if (body) {
+      var h = '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">好的，您可以继续查看各方案详情，选择后随时确认。</div></div>';
+      var c = document.createElement('div');
+      c.innerHTML = h;
+      body.appendChild(c);
+      body.scrollTop = body.scrollHeight;
+    }
+  };
+
+  /* V2.4: 旧弹窗确认函数保留兼容性，转为调用对话流确认 */
+  window.confirmSelection = function() {
+    window.confirmPlanInChat();
+  };
+  window.cancelSelection = function() {
+    window.cancelPlanConfirm();
+  };
+  window.openDocModal = function() {
+    $('docOverlay').classList.add('active');
+    var body = $('docBody');
+    if (body) { body.scrollTop = 0; }
+    setActiveTocItem('sec-01');
+  };
+
+  window.closeDocModal = function() {
+    $('docOverlay').classList.remove('active');
+  };
+
+  /* ===== 需求文档目录 ===== */
+  window.scrollToSection = function(id) {
+    var section = document.getElementById(id);
+    if (!section) return;
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveTocItem(id);
+  };
+
+  function setActiveTocItem(id) {
+    var items = document.querySelectorAll('.doc-toc-item');
+    for (var i = 0; i < items.length; i++) {
+      items[i].classList.remove('active');
+    }
+    var active = document.querySelector('.doc-toc-item[data-target="' + id + '"]');
+    if (active) active.classList.add('active');
+  }
+
+  function initDocTocScroll() {
+    var body = document.getElementById('docBody');
+    if (!body) return;
+    body.addEventListener('scroll', function() {
+      var sections = body.querySelectorAll('.doc-section[id]');
+      var scrollPos = body.scrollTop + 80;
+      var currentId = '';
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i].offsetTop <= scrollPos) {
+          currentId = sections[i].id;
+        }
+      }
+      if (currentId) setActiveTocItem(currentId);
+    });
+  }
+
+  /* ===== Segmented Controls ===== */
+  window.switchSeg = function(segId, el) {
+    var seg = $(segId);
+    var opts = seg.querySelectorAll('.seg-opt');
+    for (var i = 0; i < opts.length; i++) opts[i].classList.remove('active');
+    el.classList.add('active');
+    markDataStale();
+  };
+
+  function markDataStale() {
+    if (lastAnalysis && !dataStale) {
+      dataStale = true;
+      renderStaleNotice();
+    }
+  }
+
+  function renderStaleNotice() {
+    var db = $('drawerBody');
+    if (!db || db.querySelector('.stale-notice')) return;
+    var notice = document.createElement('div');
+    notice.className = 'stale-notice';
+    notice.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 页面数据已变更，以下分析结果可能已过期，建议重新分析';
+    db.insertBefore(notice, db.firstChild);
+  }
+
+  /* ===== Data Extraction ===== */
+  function extractAllQuoteData() {
+    var rows = document.querySelectorAll('#dataTable tbody tr');
+    var data = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      data.push({
+        rowIndex: parseInt(r.getAttribute('data-row')),
+        supplier: r.getAttribute('data-supplier'),
+        code: r.getAttribute('data-code'),
+        price: parseFloat(r.getAttribute('data-price')),
+        delivery: parseInt(r.getAttribute('data-delivery')),
+        selected: r.getAttribute('data-selected') === 'true',
+        material: r.getAttribute('data-material') || '',
+        materialCode: r.getAttribute('data-material-code') || '',
+        materialImage: r.getAttribute('data-material-image') || '',
+        quantity: parseInt(r.getAttribute('data-quantity')) || 0
+      });
+    }
+    return data;
+  }
+
+  function extractRowData(rowIndex) {
+    var row = document.querySelector('#dataTable tbody tr[data-row="' + rowIndex + '"]');
+    if (!row) return null;
+    return {
+      rowIndex: parseInt(row.getAttribute('data-row')),
+      supplier: row.getAttribute('data-supplier'),
+      code: row.getAttribute('data-code'),
+      price: parseFloat(row.getAttribute('data-price')),
+      delivery: parseInt(row.getAttribute('data-delivery')),
+      selected: row.getAttribute('data-selected') === 'true',
+      material: row.getAttribute('data-material') || '',
+      materialCode: row.getAttribute('data-material-code') || '',
+      materialImage: row.getAttribute('data-material-image') || '',
+      quantity: parseInt(row.getAttribute('data-quantity')) || 0
+    };
+  }
+
+  /* V2.2: 物料分组（含编码+图片） */
+  function getMaterialGroups(data) {
+    var groups = [];
+    var seen = {};
+    for (var i = 0; i < data.length; i++) {
+      var d = data[i];
+      var key = d.material || '未命名物料';
+      if (!seen[key]) {
+        seen[key] = true;
+        groups.push({
+          name: key,
+          code: d.materialCode || '',
+          image: d.materialImage || '',
+          count: 0,
+          suppliers: []
+        });
+      }
+      for (var g = 0; g < groups.length; g++) {
+        if (groups[g].name === key) {
+          groups[g].count++;
+          if (groups[g].suppliers.indexOf(d.supplier) === -1) {
+            groups[g].suppliers.push(d.supplier);
+          }
+          break;
+        }
+      }
+    }
+    return groups;
+  }
+
+  function filterDataByMaterial(data, materialName) {
+    return data.filter(function(d) { return (d.material || '未命名物料') === materialName; });
+  }
+
+  /* ===== Analysis Engine ===== */
+  function analyzePrices(data) {
+    var prices = data.map(function(d) { return d.price; });
+    var avg = prices.reduce(function(a, b) { return a + b; }, 0) / prices.length;
+    var min = Math.min.apply(null, prices);
+    var max = Math.max.apply(null, prices);
+
+    var findings = [];
+    var allPrices = data.map(function(d) {
+      var dev = ((d.price - avg) / avg * 100);
+      return { supplier: d.supplier, price: d.price, deviation: dev.toFixed(1), selected: d.selected };
+    });
+
+    for (var i = 0; i < data.length; i++) {
+      var dev = parseFloat(allPrices[i].deviation);
+      if (Math.abs(dev) > 15) {
+        findings.push({
+          supplier: allPrices[i].supplier,
+          price: allPrices[i].price,
+          deviation: dev,
+          severity: Math.abs(dev) > 25 ? 'high' : 'medium',
+          desc: allPrices[i].supplier + ' 报价 ' + fmtPrice(allPrices[i].price) + '，' + (dev > 0 ? '高于' : '低于') + '均价 ' + Math.abs(dev).toFixed(1) + '%'
+        });
+      }
+    }
+    return {
+      avg: avg, min: min, max: max, range: max - min,
+      findings: findings, allPrices: allPrices,
+      groupBestPrice: parseFloat((min * 0.88).toFixed(2)),
+      ecommerceRef: { jd_industrial: parseFloat((avg * 1.08).toFixed(2)), zkh: parseFloat((avg * 0.92).toFixed(2)), sanheng: parseFloat((avg * 0.95).toFixed(2)) }
+    };
+  }
+
+  function analyzeSuppliers(data) {
+    if (data.length < 2) return { scores: [], recommendation: null, reason: '仅1家供应商，无法对比推荐' };
+
+    var prices = data.map(function(d) { return d.price; });
+    var deliveries = data.map(function(d) { return d.delivery; });
+    var minP = Math.min.apply(null, prices);
+    var maxP = Math.max.apply(null, prices);
+    var minD = Math.min.apply(null, deliveries);
+    var maxD = Math.max.apply(null, deliveries);
+    var pRange = maxP - minP || 1;
+    var dRange = maxD - minD || 1;
+
+    var scores = data.map(function(d) {
+      var ps = (1 - (d.price - minP) / pRange) * 60;
+      var ds = (1 - (d.delivery - minD) / dRange) * 25;
+      var bonus = d.selected ? 15 : 0;
+      return { supplier: d.supplier, price: d.price, delivery: d.delivery, selected: d.selected,
+        totalScore: Math.round(ps + ds + bonus), priceScore: Math.round(ps), deliveryScore: Math.round(ds) };
+    });
+    scores.sort(function(a, b) { return b.totalScore - a.totalScore; });
+    return { scores: scores, recommendation: scores[0] };
+  }
+
+  function analyzeRisks(data) {
+    var risks = [];
+
+    if (data.length === 1) {
+      risks.push({ level: 'high', desc: '仅1家供应商报价，存在单一供应来源风险，建议扩大寻源范围' });
+    }
+
+    if (data.length > 1) {
+      var prices = data.map(function(d) { return d.price; });
+      var min = Math.min.apply(null, prices);
+      var max = Math.max.apply(null, prices);
+      if (max / min > 3) {
+        risks.push({ level: 'high', desc: '最高报价是最低报价的 ' + (max/min).toFixed(1) + ' 倍，价格差异极大，可能存在恶意报价或数据录入错误' });
+      }
+
+      var same = true;
+      for (var i = 1; i < data.length; i++) {
+        if (data[i].price !== data[0].price) { same = false; break; }
+      }
+      if (same) {
+        risks.push({ level: 'high', desc: '多家供应商报价完全一致（均为 ' + fmtPrice(data[0].price) + '），可能存在围标风险，建议核实' });
+      }
+
+      var dels = data.map(function(d) { return d.delivery; });
+      var dMin = Math.min.apply(null, dels);
+      var dMax = Math.max.apply(null, dels);
+      if ((dMax - dMin) > 30) {
+        risks.push({ level: 'medium', desc: '交期差异过大：最早 ' + dMin + ' 天 vs 最晚 ' + dMax + ' 天（相差 ' + (dMax-dMin) + ' 天），需关注供应链弹性' });
+      }
+
+      var avgP = prices.reduce(function(a, b) { return a + b; }, 0) / prices.length;
+      for (var j = 0; j < data.length; j++) {
+        var dev = (data[j].price - avgP) / avgP * 100;
+        if (dev < -25) {
+          risks.push({ level: 'medium', desc: data[j].supplier + ' 报价显著低于均价（' + Math.abs(dev).toFixed(0) + '%），需核实是否能按此价格交付' });
+        }
+      }
+    }
+
+    if (risks.length === 0) {
+      risks.push({ level: 'low', desc: '未发现重大风险项，报价数据整体健康' });
+    }
+    return risks;
+  }
+
+  function analyzeStrategy(data) {
+    if (data.length < 2) return [{ desc: '仅1家供应商，建议直接核价确认' }];
+
+    var prices = data.map(function(d) { return d.price; });
+    var min = Math.min.apply(null, prices);
+    var avg = prices.reduce(function(a, b) { return a + b; }, 0) / prices.length;
+
+    var strategies = [];
+
+    var minSup = null;
+    for (var i = 0; i < data.length; i++) { if (data[i].price === min) { minSup = data[i]; break; } }
+
+    var secMin = null;
+    for (var j = 0; j < data.length; j++) {
+      if (data[j].price > min && (!secMin || data[j].price < secMin.price)) secMin = data[j];
+    }
+
+    if (secMin && minSup) {
+      var gap = secMin.price - minSup.price;
+      strategies.push({
+        desc: '当前最低价 ' + minSup.supplier + ' 报价 ' + fmtPrice(minSup.price) + '，比第二低价 ' + secMin.supplier + ' 低 ' + fmtPrice(gap) + '。建议以 ' + minSup.supplier + ' 为主选供应商',
+        action: '将 ' + minSup.supplier + ' 标记入选，并与 ' + secMin.supplier + ' 协商降价至 ' + fmtPrice(minSup.price) + ' 以下'
+      });
+    }
+
+    if (minSup && minSup.price < avg) {
+      var save = avg - minSup.price;
+      strategies.push({
+        desc: '采用最低价供应商可较均价节省 ' + fmtPrice(save) + '/件（约 ' + (save/avg*100).toFixed(1) + '%）',
+        action: '建议将此作为谈判锚点，向其他供应商施压'
+      });
+    }
+
+    var highSuppliers = data.filter(function(d) { return d.price > avg * 1.1; });
+    if (highSuppliers.length > 0) {
+      var names = highSuppliers.map(function(d) { return d.supplier; }).join('、');
+      strategies.push({ desc: '以下供应商报价高于均价10%以上：' + names, action: '建议向以上供应商发送降价通知，目标价可设为 ' + fmtPrice(avg) + '（均价）' });
+    }
+
+    if (minSup && minSup.delivery > 5) {
+      strategies.push({ desc: '最低价供应商 ' + minSup.supplier + ' 交期 ' + minSup.delivery + ' 天，偏长', action: '建议评估是否可与交期短的供应商组合使用，或要求加快交付' });
+    }
+
+    return strategies;
+  }
+
+  /* ===== Trigger Analysis ===== */
+  window.triggerFullAnalysis = function() {
+    var data = extractAllQuoteData();
+    if (data.length === 0) {
+      showWelcomeMsg('当前页面未检测到报价数据，请确认比价单已生成。');
+      return;
+    }
+    dataStale = false;
+    openAIDrawer();
+    clearDrawer();
+    var mats = getMaterialGroups(data);
+    if (mats.length === 1) {
+      var mCode = mats[0].code ? '【' + mats[0].code + ' ' + mats[0].name + '】' : '【' + mats[0].name + '】';
+      addUserMessage('请对当前比价物料' + mCode + '共 ' + data.length + ' 家供应商的报价进行全量分析');
+    } else {
+      addUserMessage('请对当前 ' + mats.length + ' 种物料共 ' + data.length + ' 家供应商的报价进行全量分析');
+    }
+    runAnalysis(data, 'full');
+  };
+
+  window.triggerRowAnalysis = function(rowIndex) {
+    var d = extractRowData(rowIndex);
+    if (!d) {
+      openAIDrawer();
+      showWelcomeMsg('未能获取该行报价数据，请刷新页面后重试。');
+      return;
+    }
+    dataStale = false;
+    openAIDrawer();
+    clearDrawer();
+    addUserMessage('请分析 ' + d.supplier + ' 的报价情况');
+    var allData = extractAllQuoteData();
+    runAnalysis(allData, 'row', d);
+  };
+
+  window.triggerQuickQuestion = function(question) {
+    dataStale = false;
+    clearDrawer();
+    addUserMessage(question);
+    var data = extractAllQuoteData();
+    if (data.length === 0) {
+      addAIMessageSimple('当前页面未检测到报价数据。');
+      return;
+    }
+    runAnalysis(data, 'quick', null, question);
+  };
+
+  /* ===== Intake Detection ===== */
+  function detectIntake(text) {
+    var patterns = [
+      /帮我分析这个需求单/,
+      /分析这个需求单/,
+      /帮我分析一下这个需求单/,
+      /全量分析/,
+      /帮我做.*分析/,
+      /分析.*报价/,
+      /帮我分析/,
+      /分析一下/
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      if (patterns[i].test(text)) return true;
+    }
+    return false;
+  }
+
+  window.sendChatMessage = function() {
+    var input = $('chatInput');
+    var text = input.value.trim();
+    if (!text || isAnalyzing) return;
+    input.value = '';
+    dataStale = false;
+    $('aiWelcome').style.display = 'none';
+    addUserMessage(text);
+    var data = extractAllQuoteData();
+
+    /* V2.4: 自然语言方案确认 — 检测「确认方案A/B/C」「采纳方案X」「选方案X」等 */
+    if (currentPlans && currentPlans.length > 0) {
+      var confirmMatch = text.match(/(?:确认|采纳|选定|选)\s*方案\s*([ABCabc])/);
+      if (confirmMatch) {
+        var confirmId = confirmMatch[1].toUpperCase();
+        var plan = currentPlans.filter(function(p) { return p.id === confirmId; })[0];
+        if (plan) {
+          selectedPlan = confirmId;
+          currentPlans.forEach(function(p) {
+            var card = document.getElementById('plan-card-' + p.id);
+            if (card) card.classList.toggle('selected', p.id === confirmId);
+          });
+          var btn = document.getElementById('planConfirmBtn');
+          if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+          window.confirmPlanInChat();
+          return;
+        }
+      }
+    }
+
+    if (data.length === 0) {
+      addAIMessageSimple('当前页面未检测到报价数据，请确认比价单已生成。');
+      return;
+    }
+    /* Intake: 检测是否触发全量分析 */
+    if (detectIntake(text)) {
+      runAnalysis(data, 'full');
+    } else {
+      runAnalysis(data, 'quick', null, text);
+    }
+  };
+
+  window.handleChatKey = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  };
+
+  function runAnalysis(data, type, targetRow, question) {
+    isAnalyzing = true;
+
+    if (type === 'full') {
+      var btn = $('btnFullAI');
+      btn.classList.add('animating');
+      btn.disabled = true;
+      btn.innerHTML = triggerIcons.clock + ' 分析中...';
+      setTimeout(function() {
+        if (btn) {
+          btn.classList.remove('animating');
+          btn.disabled = false;
+          btn.innerHTML = triggerIcons.full + ' 一键AI分析';
+        }
+      }, 2800);
+    }
+
+    showSkeleton();
+
+    setTimeout(function() {
+      removeSkeleton();
+      var pr = analyzePrices(data);
+      var sr = analyzeSuppliers(data);
+      var rr = analyzeRisks(data);
+      var str = analyzeStrategy(data);
+
+      lastAnalysis = { data: data, priceResult: pr, supplierResult: sr, riskResult: rr, strategyResult: str, type: type };
+
+      if (type === 'row' && targetRow) {
+        renderRowAnalysis(targetRow, pr, rr, str);
+      } else if (type === 'quick' && question) {
+        renderQuickAnswer(question, pr, sr, rr, str);
+      } else {
+        renderFullAnalysis(pr, sr, rr, str);
+      }
+
+      isAnalyzing = false;
+    }, 1200);
+  }
+
+  /* ===== UI Rendering ===== */
+  function clearDrawer() {
+    var b = $('drawerBody');
+    var w = $('aiWelcome');
+    var welcomeHtml = w ? w.outerHTML : '';
+    b.innerHTML = welcomeHtml;
+    b.scrollTop = 0;
+  }
+
+  function showWelcomeMsg(msg) {
+    clearDrawer();
+    $('aiWelcome').style.display = 'block';
+    if (msg) addAIMessageSimple(msg);
+  }
+
+  function addUserMessage(text) {
+    $('aiWelcome').style.display = 'none';
+    var div = document.createElement('div');
+    div.className = 'chat-message user-row';
+    div.innerHTML = '<div class="chat-avatar user"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="chat-bubble user-msg">' + escapeHtml(text) + '</div>';
+    $('drawerBody').appendChild(div);
+    scrollBody();
+  }
+
+  function addAIMessageSimple(text) {
+    $('aiWelcome').style.display = 'none';
+    var div = document.createElement('div');
+    div.className = 'chat-message';
+    div.innerHTML = '<div class="chat-avatar ai"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="chat-bubble ai-msg">' + text + '</div>';
+    $('drawerBody').appendChild(div);
+    scrollBody();
+  }
+
+  function showSkeleton() {
+    var skel = document.createElement('div');
+    skel.id = 'skeletonLoader';
+    skel.innerHTML = '<div style="display:flex;gap:10px;margin-bottom:14px"><div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div style="flex:1"><div class="typing-indicator"><span></span><span></span><span></span></div><div class="skeleton-line w1"></div><div class="skeleton-line w2"></div><div class="skeleton-line w3"></div></div></div>';
+    $('drawerBody').appendChild(skel);
+    scrollBody();
+  }
+
+  function removeSkeleton() {
+    var skel = document.getElementById('skeletonLoader');
+    if (skel) skel.remove();
+  }
+
+  function scrollBody() {
+    var b = $('drawerBody');
+    setTimeout(function() { b.scrollTop = b.scrollHeight; }, 50);
+  }
+
+  function scrollToTop() {
+    var b = $('drawerBody');
+    b.scrollTop = 0;
+  }
+
+  function aiAvatarHtml() {
+    return '<div class="chat-avatar ai"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>';
+  }
+
+  /* V2.2: 多物料总览（含图片+编码） */
+  function renderMaterialOverviewHTML(allData, mats) {
+    var h = '<div class="material-overview"><div class="material-overview-title">多物料比价总览</div>';
+    h += '<table><thead><tr><th></th><th>物料编码</th><th>物料名称</th><th>供应商数</th><th>最低报价</th><th>均价</th><th>推荐供应商</th><th>风险</th></tr></thead><tbody>';
+    for (var m = 0; m < mats.length; m++) {
+      var mData = filterDataByMaterial(allData, mats[m].name);
+      var mPr = analyzePrices(mData);
+      var mSr = analyzeSuppliers(mData);
+      var mRr = analyzeRisks(mData);
+      var bestSup = mSr.scores && mSr.scores.length > 0 ? mSr.scores[0].supplier : '-';
+      var highRisks = mRr.filter(function(r) { return r.level === 'high'; });
+      var riskTxt = highRisks.length > 0 ? '<span class="mo-warn">' + highRisks.length + '项高风险</span>' : (mRr.length > 0 ? '<span style="color:#ef9f27">注意</span>' : '<span style="color:#16a34a">低风险</span>');
+      var imgHtml = mats[m].image ? '<img class="mi-thumb-sm" src="' + mats[m].image + '" alt="' + mats[m].name + '">' : '';
+      var codeHtml = mats[m].code ? '<span style="font-size:11px;color:#6366f1;font-family:monospace">' + mats[m].code + '</span>' : '-';
+      h += '<tr><td style="text-align:center">' + imgHtml + '</td><td>' + codeHtml + '</td><td><strong>' + mats[m].name + '</strong></td><td>' + mats[m].suppliers.length + '</td><td class="mo-best">' + fmtPrice(mPr.min) + '</td><td>' + fmtPrice(mPr.avg) + '</td><td>' + bestSup + '</td><td>' + riskTxt + '</td></tr>';
+    }
+    h += '</tbody></table></div>';
+    return h;
+  }
+
+  window.switchMaterialTab = function(matName, idx) {
+    /* Update tab active states */
+    var tabs = document.querySelectorAll('.material-tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+    var tab = document.getElementById('tab-' + idx);
+    if (tab) tab.classList.add('active');
+
+    /* V2.3: 隐藏总览容器（表格+卡片），显示单物料分析 */
+    var overview = document.getElementById('consolidatedOverview');
+    if (overview) overview.style.display = 'none';
+    var wrap = $('materialAnalysisWrap');
+    if (!wrap) return;
+    wrap.style.display = 'block';
+    wrap.innerHTML = '';
+
+    /* Compute material analysis */
+    var allData = lastAnalysis ? lastAnalysis.data : [];
+    var mData = filterDataByMaterial(allData, matName);
+    var mPr = analyzePrices(mData);
+    var mSr = analyzeSuppliers(mData);
+    var mRr = analyzeRisks(mData);
+    var mStr = analyzeStrategy(mData);
+
+    /* V2.2: 物料画像 — Tab切换时展示该物料的图片+编码信息条 */
+    var mats = getMaterialGroups(allData);
+    var matInfo = null;
+    for (var mi = 0; mi < mats.length; mi++) {
+      if (mats[mi].name === matName) { matInfo = mats[mi]; break; }
+    }
+    if (matInfo) {
+      var infoBar = document.createElement('div');
+      infoBar.className = 'material-info-bar';
+      var imgH = matInfo.image ? '<img class="mi-thumb" src="' + matInfo.image + '" alt="' + matName + '">' : '';
+      var codeH = matInfo.code ? '<span class="mi-code">' + matInfo.code + '</span>' : '';
+      infoBar.innerHTML = imgH + '<span class="mi-icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span><span class="mi-name">' + codeH + ' ' + matName + '</span><span class="mi-detail">' + matInfo.suppliers.length + '家供应商报价</span><span class="mi-count">' + mData.length + '条报价记录</span>';
+      wrap.appendChild(infoBar);
+    }
+
+    /* Use renderAnalysisCards with target */
+    renderAnalysisCards(mPr, mSr, mRr, mStr, mData, 'materialAnalysisWrap');
+  };
+
+  window.switchMaterialOverview = function() {
+    var tabs = document.querySelectorAll('.material-tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+    var tab = document.getElementById('tab-overview');
+    if (tab) tab.classList.add('active');
+
+    /* V2.3: 显示总览容器（表格+卡片），隐藏单物料分析 */
+    var overview = document.getElementById('consolidatedOverview');
+    if (overview) overview.style.display = 'block';
+    var wrap = $('materialAnalysisWrap');
+    if (wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
+  };
+
+  /* V2.1: 分析卡片提取为独立函数，供单/多物料复用 */
+  function renderFullAnalysis(pr, sr, rr, str) {
+    var data = lastAnalysis ? lastAnalysis.data : [];
+    renderAnalysisCards(pr, sr, rr, str, data, null);
+  }
+
+  function renderAnalysisCards(pr, sr, rr, str, data, targetId) {
+    var body = targetId ? document.getElementById(targetId) : $('drawerBody');
+    var h = '';
+
+    /* V2.1: 物料感知 — 仅在非 target 模式（即全量渲染）时显示 */
+    var allData = data.length > 0 ? data : (lastAnalysis ? lastAnalysis.data : []);
+    var mats = getMaterialGroups(allData);
+    var materialName = (!targetId && mats.length === 1) ? mats[0].name : '';
+    var matContext = materialName ? '【' + materialName + '】' : '';
+
+    if (!targetId && mats.length > 1) {
+      /* V2.3: 多物料 — 总览视图同时含分析卡片 + 中标方案 */
+      h += '<div id="consolidatedOverview">';
+      /* 多物料 Tab 栏 */
+      h += '<div class="material-tab-bar" id="materialTabBar">';
+      h += '<div class="material-tab active" id="tab-overview" onclick="switchMaterialOverview()">📊 多物料总览</div>';
+      for (var mt = 0; mt < mats.length; mt++) {
+        var mtCode = mats[mt].code ? mats[mt].code : mats[mt].name;
+        h += '<div class="material-tab" id="tab-' + mt + '" onclick="switchMaterialTab(\'' + mats[mt].name + '\', ' + mt + ')">' + mats[mt].name + '<span class="mt-badge">' + mats[mt].suppliers.length + '家</span><span style="font-size:10px;color:rgba(99,102,241,.6);margin-left:2px">' + mtCode + '</span></div>';
+      }
+      h += '</div>';
+      /* 默认显示总览 */
+      h += renderMaterialOverviewHTML(allData, mats);
+      h += '<div class="consolidated-cards" id="consolidatedCards">';
+    }
+
+    if (!targetId && mats.length > 1) {
+      /* V2.3: 多物料总览消息 + 全量分析卡片 */
+      h += '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">以下是<strong>多物料比价总览</strong>（含 ' + mats.length + ' 种物料共 ' + pr.allPrices.length + ' 家供应商报价）：</div></div>';
+    } else if (!targetId) {
+      h += '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">以下是当前比价单' + matContext + '的<strong>全量分析报告</strong>（共分析了 ' + pr.allPrices.length + ' 家供应商报价）：</div></div>';
+    }
+
+    /* 单物料信息条（含图片+编码） */
+    if (materialName) {
+      var matWithImage = mats[0];
+      var imgHtml2 = (matWithImage && matWithImage.image) ? '<img class="mi-thumb" src="' + matWithImage.image + '" alt="' + materialName + '">' : '';
+      var codeHtml2 = (matWithImage && matWithImage.code) ? '<span class="mi-code">' + matWithImage.code + '</span>' : '';
+      h += '<div class="material-info-bar">' + imgHtml2 + '<span class="mi-icon"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span><span class="mi-name">' + codeHtml2 + ' ' + materialName + '</span><span class="mi-detail">' + mats[0].suppliers.length + '家供应商报价</span><span class="mi-count">' + pr.allPrices.length + '条报价记录</span></div>';
+    }
+
+    /* 价格 */
+    /* V2.4: 一~四默认折叠，五默认展开 */
+    h += '<div class="analysis-card collapsed"><div class="analysis-card-header price" onclick="toggleCard(this)"><span class="card-title">● 一、价格合理性</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    h += '<strong>报价概况：</strong>均价 ' + fmtPrice(pr.avg) + '，最低 ' + fmtPrice(pr.min) + '，最高 ' + fmtPrice(pr.max) + '，价差 ' + fmtPrice(pr.range) + '<br><br>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px"><thead><tr style="background:#fafafa"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee">供应商</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid #eee">报价</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid #eee">偏离均价</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #eee">状态</th></tr></thead><tbody>';
+    for (var i = 0; i < pr.allPrices.length; i++) {
+      var p = pr.allPrices[i];
+      var dn = parseFloat(p.deviation);
+      var dc = Math.abs(dn) > 15 ? '#e24b4a' : (Math.abs(dn) > 5 ? '#ef9f27' : '#16a34a');
+      var dt = (dn >= 0 ? '+' : '') + p.deviation + '%';
+      var bdg = Math.abs(dn) > 15 ? '<span class="risk-badge high">偏离</span>' : (Math.abs(dn) > 5 ? '<span class="risk-badge medium">偏高</span>' : '<span class="risk-badge low">合理</span>');
+      h += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">' + p.supplier + (p.selected ? ' <span style="color:#1677ff;font-size:11px">[已入选]</span>' : '') + '</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #f5f5f5;font-weight:500">' + fmtPrice(p.price) + '</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #f5f5f5;color:' + dc + ';font-weight:500">' + dt + '</td><td style="padding:6px 8px;text-align:center;border-bottom:1px solid #f5f5f5">' + bdg + '</td></tr>';
+    }
+    h += '</tbody></table>';
+    if (pr.findings.length > 0) {
+      h += '<div style="margin-top:6px"><strong>需关注：</strong></div>';
+      for (var j = 0; j < pr.findings.length; j++) {
+        var f = pr.findings[j];
+        h += '<div style="margin-top:3px;color:' + (f.severity==='high'?'#e24b4a':'#ef9f27') + '">· ' + f.desc + '</div>';
+      }
+    }
+
+    /* 多维价格对标 */
+    if (pr.groupBestPrice || pr.ecommerceRef) {
+      h += '<div class="price-benchmark">';
+      h += '<div class="price-benchmark-title">● 多维价格对标</div>';
+      if (pr.groupBestPrice) {
+        var gbDiff = ((pr.min - pr.groupBestPrice) / pr.groupBestPrice * 100);
+        var gbClr = gbDiff > 0 ? '#16a34a' : '#e24b4a';
+        h += '<div class="price-benchmark-row"><span class="price-benchmark-label">集团历史最低价</span><span class="price-benchmark-val">' + fmtPrice(pr.groupBestPrice) + '</span><span style="font-size:11px;color:' + gbClr + ';margin-left:4px">当前最低价较之' + (gbDiff > 0 ? '高' : '低') + ' ' + Math.abs(gbDiff).toFixed(1) + '%</span><span class="price-benchmark-src">集团采购价格库</span></div>';
+      }
+      if (pr.ecommerceRef) {
+        var jdDiff = ((pr.ecommerceRef.jd_industrial - pr.avg) / pr.avg * 100);
+        var jdClr = jdDiff > 0 ? '#e24b4a' : '#16a34a';
+        h += '<div class="price-benchmark-row"><span class="price-benchmark-label">京东工业品</span><span class="price-benchmark-val">' + fmtPrice(pr.ecommerceRef.jd_industrial) + '</span><span style="font-size:11px;color:' + jdClr + ';margin-left:4px">较均价' + (jdDiff > 0 ? '高' : '低') + ' ' + Math.abs(jdDiff).toFixed(1) + '%</span><span class="price-benchmark-src">京东工业品</span></div>';
+        var zkDiff = ((pr.ecommerceRef.zkh - pr.avg) / pr.avg * 100);
+        var zkClr = zkDiff > 0 ? '#e24b4a' : '#16a34a';
+        h += '<div class="price-benchmark-row"><span class="price-benchmark-label">震坤行</span><span class="price-benchmark-val">' + fmtPrice(pr.ecommerceRef.zkh) + '</span><span style="font-size:11px;color:' + zkClr + ';margin-left:4px">较均价' + (zkDiff > 0 ? '高' : '低') + ' ' + Math.abs(zkDiff).toFixed(1) + '%</span><span class="price-benchmark-src">震坤行</span></div>';
+        var shDiff = ((pr.ecommerceRef.sanheng - pr.avg) / pr.avg * 100);
+        var shClr = shDiff > 0 ? '#e24b4a' : '#16a34a';
+        h += '<div class="price-benchmark-row"><span class="price-benchmark-label">三横商城</span><span class="price-benchmark-val">' + fmtPrice(pr.ecommerceRef.sanheng) + '</span><span style="font-size:11px;color:' + shClr + ';margin-left:4px">较均价' + (shDiff > 0 ? '高' : '低') + ' ' + Math.abs(shDiff).toFixed(1) + '%</span><span class="price-benchmark-src">三横商城</span></div>';
+      }
+      h += '<div class="price-benchmark-note">※ 以上为外部参考数据，仅供议价参考，实际价格以供应商报价和集团价格库为准</div>';
+      h += '</div>';
+    }
+    h += '</div></div>';
+
+    /* 供应商推荐 */
+    h += '<div class="analysis-card collapsed"><div class="analysis-card-header recommend" onclick="toggleCard(this)"><span class="card-title">● 二、供应商推荐排序</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    if (sr.scores && sr.scores.length > 0) {
+      h += '<strong>综合评分（价格权重60% + 交期权重25% + 入选加分15%）：</strong><br><br>';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#fafafa"><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #eee">#</th><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee">供应商</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid #eee">综合评分</th><th style="padding:6px 8px;text-align:center;border-bottom:1px solid #eee">推荐</th></tr></thead><tbody>';
+      for (var k = 0; k < sr.scores.length; k++) {
+        var s = sr.scores[k];
+        var medal = k===0 ? '🥇' : (k===1 ? '🥈' : (k===2 ? '🥉' : ''));
+        var rec = k===0 ? '<span style="color:#16a34a;font-weight:600">推荐</span>' : (k===1 ? '<span style="color:#1677ff">备选</span>' : '');
+        h += '<tr><td style="padding:6px 8px;text-align:center;border-bottom:1px solid #f5f5f5">' + medal + '</td><td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">' + s.supplier + '</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #f5f5f5;font-weight:600">' + s.totalScore + ' 分</td><td style="padding:6px 8px;text-align:center;border-bottom:1px solid #f5f5f5">' + rec + '</td></tr>';
+      }
+      h += '</tbody></table>';
+    } else {
+      h += sr.reason || '数据不足，无法推荐';
+    }
+    h += '</div></div>';
+
+    /* 判断策略建议 */
+    h += '<div class="analysis-card collapsed"><div class="analysis-card-header strategy" onclick="toggleCard(this)"><span class="card-title">● 三、判断策略建议</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    for (var t = 0; t < str.length; t++) {
+      var st = str[t];
+      h += '<div style="margin-bottom:8px"><strong>' + (t+1) + '. </strong>' + st.desc;
+      if (st.action) h += '<br><span style="color:#6366f1;font-size:12px">→ 建议操作：' + st.action + '</span>';
+      h += '</div>';
+    }
+    h += '<div style="margin-top:8px;padding:8px;background:#fafafa;border-radius:6px;font-size:11.5px;color:#888">以上建议基于当前页面数据自动生成，仅供参考，最终决策请结合业务实际情况。</div>';
+    h += '</div></div>';
+
+    /* 风险 */
+    h += '<div class="analysis-card collapsed"><div class="analysis-card-header risk" onclick="toggleCard(this)"><span class="card-title">● 四、风险提示</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    for (var r = 0; r < rr.length; r++) {
+      var ri = rr[r];
+      var lb = ri.level==='high' ? '<span class="risk-badge high">高风险</span>' : (ri.level==='medium' ? '<span class="risk-badge medium">中风险</span>' : '<span class="risk-badge low">低风险</span>');
+      h += '<div style="margin-bottom:6px;display:flex;align-items:flex-start;gap:6px">' + lb + '<span>' + ri.desc + '</span></div>';
+    }
+    h += '</div></div>';
+
+    /* 中标方案选择 — A/B/C 三方案 */
+    currentPlans = generatePlans(lastAnalysis ? lastAnalysis.data : [], sr, pr);
+    selectedPlan = null;
+    h += '<div class="analysis-card" id="selectionCard"><div class="analysis-card-header selection" onclick="toggleCard(this)"><span class="card-title">● 五、中标方案选择</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    if (currentPlans.length > 0) {
+      h += '<div style="font-size:12px;color:#666;margin-bottom:10px">AI 根据采购策略自动生成以下 ' + currentPlans.length + ' 个中标方案，选择一个方案后点击确认即可同步至采购系统。</div>';
+      for (var pi = 0; pi < currentPlans.length; pi++) {
+        var pl = currentPlans[pi];
+        h += '<div class="plan-card" id="plan-card-' + pl.id + '" onclick="selectPlan(\'' + pl.id + '\')">';
+        h += '<div class="plan-header" style="background:' + (pl.id==='A'?'#fef2f2':pl.id==='B'?'#eff6ff':'#f5f3ff') + ';color:' + (pl.id==='A'?'#e24b4a':pl.id==='B'?'#1677ff':'#6366f1') + '">';
+        h += '<div class="plan-left"><div class="plan-badge ' + pl.id.toLowerCase() + '">' + pl.id + '</div><span>' + pl.name + '</span><span class="plan-tag">' + pl.tag + '</span></div>';
+        h += '<div class="plan-radio"></div>';
+        h += '</div>';
+        h += '<div class="plan-body">';
+        h += '<div class="plan-strategy">' + pl.strategy + '</div>';
+        h += '<div class="plan-metrics">';
+        h += '<div class="plan-metric"><div class="plan-metric-val">¥' + pl.totalCost.toFixed(2) + '</div><div class="plan-metric-label">单价/均价</div></div>';
+        h += '<div class="plan-metric"><div class="plan-metric-val">' + pl.avgDelivery + '天</div><div class="plan-metric-label">交期</div></div>';
+        h += '<div class="plan-metric"><div class="plan-metric-val" style="color:' + (pl.saveVsAvg >= 0 ? '#16a34a' : '#e24b4a') + '">' + (pl.saveVsAvg >= 0 ? '-' : '+') + Math.abs(pl.saveVsAvg) + '%</div><div class="plan-metric-label">vs均价</div></div>';
+        h += '</div>';
+        h += '<div class="plan-suppliers">';
+        for (var si = 0; si < pl.suppliers.length; si++) {
+          var sup = pl.suppliers[si];
+          h += '<div class="ps-row"><span class="ps-name">' + sup.name + '</span>';
+          if (sup.material) h += '<span class="ps-material">' + sup.material + ' × ' + sup.quantity + '</span>';
+          h += '</div>';
+        }
+        h += '</div>';
+        h += '<div class="plan-pros-cons"><div class="plan-pros"><strong>优势</strong><br>' + pl.pros + '</div><div class="plan-cons"><strong>注意</strong><br>' + pl.cons + '</div></div>';
+        h += '</div></div>';
+      }
+    } else {
+      h += '<div style="font-size:12.5px;color:#888;text-align:center;padding:16px">数据不足，无法生成中标方案</div>';
+    }
+    h += '<div class="plan-confirm-bar"><span class="count" id="planCount">请选择一个方案</span>';
+    h += '<button onclick="openPlanConfirmDialog()" id="planConfirmBtn" style="padding:6px 16px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;font-size:12.5px;font-weight:500;opacity:.5" disabled>确认方案（对话确认）</button>';
+    h += '</div>';
+    h += '<div class="sel-synced-tip" id="planSyncedTip">已同步至采购系统</div>';
+    h += '</div></div>';
+
+    /* V2.3: 多物料 — 关闭总览容器，外层放置 Tab 切换区 */
+    if (!targetId && mats.length > 1) {
+      h += '</div>'; /* close consolidatedCards */
+      h += '</div>'; /* close consolidatedOverview */
+      h += '<div class="material-analysis-wrap" id="materialAnalysisWrap"></div>';
+    }
+
+    var c = document.createElement('div');
+    c.innerHTML = h;
+    body.appendChild(c);
+    if (!targetId) scrollToTop();
+  }
+
+  function renderRowAnalysis(targetRow, pr, rr, str) {
+    var body = $('drawerBody');
+    var h = '';
+    var dev = 0;
+    for (var i = 0; i < pr.allPrices.length; i++) {
+      if (pr.allPrices[i].supplier === targetRow.supplier) { dev = parseFloat(pr.allPrices[i].deviation); break; }
+    }
+
+    h += '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">针对 <strong>' + targetRow.supplier + '</strong> 的分析如下：</div></div>';
+
+    var devCls = Math.abs(dev) > 15 ? 'price' : (Math.abs(dev) > 5 ? 'strategy' : 'recommend');
+    h += '<div class="analysis-card"><div class="analysis-card-header ' + devCls + '" onclick="toggleCard(this)"><span class="card-title">● 价格分析</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    h += '报价：<strong>' + fmtPrice(targetRow.price) + '</strong>，偏离均价 <strong>' + (dev>=0?'+':'') + dev.toFixed(1) + '%</strong>，';
+    if (dev > 15) h += '<span style="color:#e24b4a">明显高于平均水平，建议重点谈判降价</span>';
+    else if (dev > 5) h += '<span style="color:#ef9f27">略高于均价，可尝试议价</span>';
+    else if (dev < -15) h += '<span style="color:#e24b4a">显著低于均价，需核实交付能力</span>';
+    else h += '<span style="color:#16a34a">价格在合理区间</span>';
+    h += '</div></div>';
+
+    h += '<div class="analysis-card"><div class="analysis-card-header risk" onclick="toggleCard(this)"><span class="card-title">● 风险评估</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    if (targetRow.delivery > 7) {
+      h += '<div><span class="risk-badge medium">中风险</span> 交期 ' + targetRow.delivery + ' 天，在供应商中偏长</div>';
+    } else {
+      h += '<div><span class="risk-badge low">低风险</span> 交期 ' + targetRow.delivery + ' 天，在合理范围内</div>';
+    }
+    h += '</div></div>';
+
+    h += '<div class="analysis-card"><div class="analysis-card-header strategy" onclick="toggleCard(this)"><span class="card-title">● 谈判建议</span><svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div><div class="analysis-card-body">';
+    h += '<div>若选择此供应商，建议谈判要点：</div>';
+    if (dev > 10) h += '<div>· 引用最低报价作为参照，要求降价至均价 ' + fmtPrice(pr.avg) + ' 附近</div>';
+    if (targetRow.delivery > 5) h += '<div>· 协商缩短交期至 5 天以内</div>';
+    if (!targetRow.selected) h += '<div>· 评估此供应商综合实力（资质、历史履约率等）</div>';
+    h += '</div></div>';
+
+    var c = document.createElement('div');
+    c.innerHTML = h;
+    body.appendChild(c);
+    scrollToTop();
+  }
+
+  function renderQuickAnswer(q, pr, sr, rr, str) {
+    var body = $('drawerBody');
+    var h = '<div class="chat-message">' + aiAvatarHtml() + '<div class="chat-bubble ai-msg">';
+    var ql = q.toLowerCase();
+
+    if (ql.indexOf('性价比')>=0 || ql.indexOf('推荐')>=0 || ql.indexOf('哪家')>=0) {
+      if (sr.scores && sr.scores.length > 0) {
+        h += '综合性价比排序如下：<br><br><ol style="padding-left:18px;margin:0">';
+        for (var i = 0; i < sr.scores.length; i++) {
+          var s = sr.scores[i];
+          h += '<li style="margin-bottom:6px"><strong>' + s.supplier + '</strong> ' + fmtPrice(s.price) + ' / 交期' + s.delivery + '天 / 得分' + s.totalScore + '</li>';
+        }
+        h += '</ol><br>建议优先选择 <strong>' + sr.scores[0].supplier + '</strong>。';
+      } else {
+        h += sr.reason || '数据不足，无法给出推荐。';
+      }
+    } else if (ql.indexOf('异常')>=0 || ql.indexOf('关注')>=0 || ql.indexOf('风险')>=0) {
+      h += '当前比价单风险项：<br><br>';
+      for (var j = 0; j < rr.length; j++) {
+        var rk = rr[j];
+        var bdg = rk.level==='high' ? '<span class="risk-badge high">高风险</span>' : (rk.level==='medium' ? '<span class="risk-badge medium">中风险</span>' : '<span class="risk-badge low">低风险</span>');
+        h += '<div style="margin-bottom:6px">' + bdg + ' ' + rk.desc + '</div>';
+      }
+      if (pr.findings.length > 0) {
+        h += '<br><strong>价格异常：</strong><br>';
+        for (var k = 0; k < pr.findings.length; k++) {
+          h += '<div style="margin-top:3px;color:#e24b4a">· ' + pr.findings[k].desc + '</div>';
+        }
+      }
+    } else if (ql.indexOf('价格')>=0 || ql.indexOf('对比')>=0) {
+      h += '价格分布：均价 ' + fmtPrice(pr.avg) + '<br><br>';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#fafafa"><th style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee">供应商</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid #eee">报价</th><th style="padding:6px 8px;text-align:right;border-bottom:1px solid #eee">偏离</th></tr></thead><tbody>';
+      for (var p = 0; p < pr.allPrices.length; p++) {
+        var ap = pr.allPrices[p];
+        h += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f5f5f5">' + ap.supplier + '</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #f5f5f5">' + fmtPrice(ap.price) + '</td><td style="padding:6px 8px;text-align:right;border-bottom:1px solid #f5f5f5">' + (parseFloat(ap.deviation)>=0?'+':'') + ap.deviation + '%</td></tr>';
+      }
+      h += '</tbody></table>';
+    } else {
+      h += '根据您的问题，为您提供当前比价单的完整分析：<br><br>';
+      h += '<strong>价格概况：</strong>均价 ' + fmtPrice(pr.avg) + '，范围 ' + fmtPrice(pr.min) + ' ~ ' + fmtPrice(pr.max) + '<br><br>';
+      if (sr.scores && sr.scores.length > 0) {
+        h += '<strong>推荐供应商：</strong>' + sr.scores[0].supplier + '（综合评分最高）<br><br>';
+      }
+      h += '<strong>风险项：</strong><br>';
+      for (var m = 0; m < rr.length; m++) {
+        h += '· ' + rr[m].desc + '<br>';
+      }
+    }
+    h += '</div></div>';
+
+    var c = document.createElement('div');
+    c.innerHTML = h;
+    body.appendChild(c);
+    scrollToTop();
+  }
+
+  initDocTocScroll();
+
+})();
+</script>
+
+</body>
+</html>
