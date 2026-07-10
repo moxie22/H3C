@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<!-- 物料创建V2.0 | 更新: 2026-07-10
+     V2.0变更: 需求文档全面审查修正 + 功能补实现
+     P0修正:
+     - 01段成功指标补充基线定义（手工创建平均8分钟→目标3.2分钟）
+     - AC-05 补实现: Ctrl+V粘贴上传 + 拖拽上传JS事件
+     - AC-09 补实现: 表单必填校验JS（保存时校验+高亮+阻止提交）
+     P1修正:
+     - 02段补充物料管理员用户故事
+     - 04段补充多物料选择步骤（步骤4a）+ validate自动校验步骤
+     - 05段明确validate_material_skill在提交前自动调用
+     - 06段补充"对话编辑中"状态规则
+     - 07段补充"对话改字段-字段未匹配"异常条目
+     P2修正:
+     - 扩充别名表（品牌/物料组/产品层次/环保标记等）
+     - 新增10段: 非功能性需求（性能/安全/兼容性）
+     V1.9功能保留: 识别组件上下布局/对话澄清/对话改字段/需求文档9段→10段结构
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>立讯AI采购平台 · AI助手 + 物料创建</title>
+<style>
+  /* ========== Reset & Base ========== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 14px;
+    color: #1f2329;
+    background: #f5f6f7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; }
+  input, textarea { font-family: inherit; outline: none; border: none; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ========== Layout ========== */
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .topbar {
+    height: 40px;
+    background: #fff;
+    border-bottom: 1px solid #f0f1f3;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    flex-shrink: 0;
+  }
+  .topbar-toggle {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #4e5969;
+  }
+  .topbar-toggle:hover { background: #f2f3f5; }
+  .topbar-toggle svg { width: 16px; height: 16px; }
+
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .topbar-btn {
+    height: 28px; padding: 0 12px;
+    border-radius: 14px;
+    background: #f2f3f5;
+    color: #1d2129;
+    font-size: 12px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .topbar-btn:hover { background: #e5e6eb; }
+  .topbar-icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #4e5969;
+    position: relative;
+  }
+  .topbar-icon-btn:hover { background: #f2f3f5; }
+  .topbar-icon-btn svg { width: 16px; height: 16px; }
+  .topbar-icon-btn .badge {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: 7px;
+    background: #f53f3f;
+    color: #fff;
+    font-size: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .topbar-user {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: 4px;
+    padding: 0 8px;
+    cursor: pointer;
+  }
+  .topbar-user:hover { background: #f7f8fa; border-radius: 4px; }
+  .topbar-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+  }
+  .topbar-user-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .topbar-user-name { font-size: 12px; font-weight: 600; color: #1d2129; }
+  .topbar-user-role { font-size: 10px; color: #86909c; }
+
+  .main { display: flex; flex: 1; min-height: 0; }
+
+  /* ========== Narrow Icon Rail ========== */
+  .icon-rail {
+    width: 56px;
+    background: #fff;
+    border-right: 1px solid #f0f1f3;
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    flex-shrink: 0;
+  }
+  .rail-item {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #4e5969;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .rail-item:hover { background: #f2f3f5; }
+  .rail-item.active { background: #e8f3ff; color: #2f7df6; }
+  .rail-item.active::before {
+    content: ''; position: absolute;
+    left: -8px; top: 8px; bottom: 8px;
+    width: 3px; border-radius: 0 2px 2px 0;
+    background: #2f7df6;
+  }
+  .rail-item svg { width: 18px; height: 18px; }
+  .rail-spacer { flex: 1; }
+  .rail-collapse {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #86909c;
+  }
+  .rail-collapse:hover { background: #f2f3f5; }
+  .rail-collapse svg { width: 16px; height: 16px; }
+
+  /* ========== AI Chat Pane ========== */
+  .chat-pane {
+    width: 480px;
+    background: #ffffff;
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .chat-header {
+    height: 36px;
+    display: flex; align-items: center;
+    padding: 0 16px;
+    flex-shrink: 0;
+  }
+  .chat-header-logo {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #1d2129;
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .chat-header-user {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px;
+    color: #4e5969;
+  }
+  .chat-header-user .dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #2f7df6;
+    color: #fff;
+    font-size: 10px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 16px;
+  }
+  .chat-body::-webkit-scrollbar { width: 6px; }
+  .chat-body::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+  .chat-body::-webkit-scrollbar-track { background: transparent; }
+
+  .msg-user { display: flex; justify-content: flex-end; margin: 16px 0; }
+  .bubble-user {
+    max-width: 360px;
+    background: linear-gradient(135deg, #2f7df6 0%, #4ea0ff 100%);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border-bottom: 2px solid #1d4ed8;
+    font-size: 13px;
+    line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(47,125,246,0.25);
+  }
+
+  .msg-ai { display: flex; gap: 10px; margin: 16px 0; }
+  .ai-avatar {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .ai-content { flex: 1; min-width: 0; }
+  .ai-name { font-size: 12px; color: #4e5969; margin-bottom: 4px; }
+  .bubble-ai {
+    background: #fff;
+    border: 1px solid #e5e6eb;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #1d2129;
+  }
+  .bubble-ai p { margin-bottom: 8px; }
+  .bubble-ai p:last-child { margin-bottom: 0; }
+  .bubble-ai .motor-list { margin: 8px 0; padding-left: 0; list-style: none; counter-reset: motor; }
+  .bubble-ai .motor-list li {
+    counter-increment: motor;
+    margin-bottom: 6px;
+    padding-left: 22px;
+    position: relative;
+  }
+  .bubble-ai .motor-list li::before {
+    content: counter(motor) ". ";
+    color: #1d2129;
+    font-weight: 600;
+    position: absolute;
+    left: 0;
+  }
+  .bubble-ai .motor-list li b { color: #1d4ed8; font-weight: 600; }
+
+  .chat-input {
+    margin: 0 20px 16px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #e5e6eb;
+    flex-shrink: 0;
+  }
+  .chat-input textarea {
+    width: 100%;
+    min-height: 38px;
+    max-height: 120px;
+    padding: 10px 14px;
+    font-size: 13px;
+    resize: none;
+    background: transparent;
+  }
+  .chat-input textarea::placeholder { color: #c9cdd4; }
+  .chat-input-toolbar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    border-top: 1px solid #f0f1f3;
+  }
+  .tool-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #4e5969;
+  }
+  .tool-btn:hover { background: #f2f3f5; }
+  .tool-btn svg { width: 16px; height: 16px; }
+  .tool-pill {
+    height: 26px; padding: 0 10px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #3b8bf8 0%, #2563eb 100%);
+    color: #fff;
+    font-size: 12px;
+    display: inline-flex; align-items: center; gap: 4px;
+    border: none;
+  }
+  .tool-pill:hover { background: linear-gradient(180deg, #2f7df6 0%, #1d4ed8 100%); }
+  .tool-pill svg { width: 12px; height: 12px; }
+  .tool-spacer { flex: 1; }
+  .send-btn {
+    height: 26px; padding: 0 14px;
+    border-radius: 4px;
+    background: #c9cdd4;
+    color: #fff;
+    font-size: 12px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .send-btn.ready { background: #2f7df6; }
+  .send-btn.ready:hover { background: #1d6fe6; }
+  .send-btn svg { width: 12px; height: 12px; }
+
+  /* ========== Divider ========== */
+  .divider {
+    width: 4px;
+    background: #e5e6eb;
+    cursor: col-resize;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .divider:hover, .divider.dragging { background: #2f7df6; }
+
+  /* ========== Right Pane: Material Create ========== */
+  .right-pane {
+    flex: 1; min-width: 0;
+    background: #fff;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .right-header {
+    height: 40px;
+    padding: 0 16px;
+    border-bottom: 1px solid #f0f1f3;
+    display: flex; align-items: center;
+    flex-shrink: 0;
+  }
+  .right-header-title { font-size: 13px; font-weight: 600; color: #1d2129; }
+  .right-header-title::before {
+    content: ''; display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #00b42a; margin-right: 8px;
+    vertical-align: middle;
+  }
+  .right-header-actions { margin-left: auto; display: flex; gap: 4px; }
+  .right-header-btn {
+    height: 24px; padding: 0 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #4e5969;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .right-header-btn:hover { background: #f2f3f5; color: #1d2129; }
+  .right-header-btn.primary { background: #2f7df6; color: #fff; }
+  .right-header-btn.primary:hover { background: #1d6fe6; }
+  .right-header-btn svg { width: 12px; height: 12px; }
+
+  .right-body {
+    flex: 1; overflow: auto;
+    background: #f5f7fa;
+  }
+  .page-breadcrumb {
+    padding: 10px 20px;
+    font-size: 12px;
+    color: #86909c;
+    background: #fff;
+    border-bottom: 1px solid #f0f1f3;
+  }
+  .page-breadcrumb .sep { margin: 0 6px; color: #c9cdd4; }
+  .page-breadcrumb .cur { color: #1d2129; }
+
+  .form-section {
+    background: #fff;
+    margin: 12px;
+    border-radius: 6px;
+    border: 1px solid #f0f1f3;
+    padding: 16px 20px;
+  }
+  .section-title {
+    font-size: 14px; font-weight: 600; color: #1d2129;
+    margin-bottom: 14px;
+    display: flex; align-items: center;
+  }
+  .section-title::before {
+    content: ''; display: inline-block;
+    width: 3px; height: 14px;
+    background: #2f7df6;
+    border-radius: 1.5px;
+    margin-right: 8px;
+  }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 24px; }
+  .form-row.form-row-2col { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 12px; color: #4e5969; }
+  .form-field label .req { color: #f53f3f; margin-right: 2px; }
+  .form-field label .ai-tip {
+    margin-left: 4px; font-size: 10px;
+    color: #ad6800;
+    background: #fffbe6;
+    border: 1px solid #ffe58f;
+    padding: 0 4px;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+  .form-input, .form-select {
+    height: 30px; padding: 0 10px;
+    border: 1px solid #c9cdd4;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #fff;
+    color: #1d2129;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus { border-color: #2f7df6; }
+  .form-input::placeholder { color: #c9cdd4; }
+  .form-select { appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909c' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .form-textarea {
+    min-height: 60px;
+    padding: 8px 10px;
+    border: 1px solid #c9cdd4;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #fff;
+    color: #1d2129;
+    width: 100%;
+    resize: vertical;
+  }
+
+  .switch-row { display: flex; flex-wrap: wrap; gap: 24px; padding-top: 6px; }
+
+  .btn {
+    height: 30px; padding: 0 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .btn-default { background: #fff; border: 1px solid #c9cdd4; color: #1d2129; }
+  .btn-default:hover { border-color: #2f7df6; color: #2f7df6; }
+  .btn-primary { background: #2f7df6; color: #fff; }
+  .btn-primary:hover { background: #1d6fe6; }
+
+  .modal-left-input-wrap { position: relative; margin-bottom: 12px; }
+  .modal-left-input {
+    width: 100%; height: 32px; padding: 0 30px 0 12px;
+    border: 1px solid #e5e6eb; border-radius: 4px;
+    font-size: 13px; background: #fff; color: #1d2129;
+  }
+  .modal-left-input:focus { border-color: #2f7df6; }
+  .modal-left-input::placeholder { color: #c9cdd4; }
+  .modal-image {
+    margin: 12px 0; height: 90px;
+    background: #f0f1f3;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .modal-image img { width: 100%; height: 100%; object-fit: cover; }
+  .modal-image-content { width: 100%; height: 100%; position: relative; }
+  .modal-image-page {
+    position: absolute; bottom: 4px; right: 6px;
+    color: #fff; font-size: 10px;
+    background: rgba(0,0,0,0.5);
+    padding: 1px 6px; border-radius: 8px;
+  }
+  .modal-image-replace {
+    position: absolute; top: 6px; right: 6px;
+    height: 22px; padding: 0 8px;
+    background: rgba(0,0,0,0.55); border: none;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 3px;
+    cursor: pointer; z-index: 2;
+    color: #fff; font-size: 11px;
+  }
+  .modal-image-replace:hover { background: rgba(0,0,0,0.75); }
+  .modal-image-replace svg { width: 11px; height: 11px; }
+  .modal-hint {
+    font-size: 12px; color: #86909c;
+    background: #fff; border: 1px solid #f0f1f3;
+    border-radius: 4px; padding: 8px 10px;
+    margin-bottom: 12px;
+  }
+  .btn-identify {
+    width: 100%; height: 34px;
+    background: linear-gradient(135deg, #2f7df6 0%, #4ea0ff 100%);
+    color: #fff; font-size: 13px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-bottom: 12px;
+  }
+  .btn-identify:hover { opacity: 0.92; }
+  .success-card {
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #389e0d;
+    margin-bottom: 12px;
+  }
+  .success-card b { display: block; margin-bottom: 2px; }
+  .progress-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #4e5969; margin-bottom: 6px; }
+  .queue-count { background: #2f7df6; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; vertical-align: 1px; }
+  .progress-dots { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; color: #4e5969; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px; vertical-align: middle; }
+  .dot-green { background: #00b42a; }
+  .dot-blue { background: #2f7df6; }
+  .dot-gray { background: #c9cdd4; }
+  .progress-dots span:not(.dot) { margin-right: 8px; }
+  .progress-bar { height: 6px; background: #d9f7be; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+  .progress-bar-fill { height: 100%; background: #00b42a; border-radius: 3px; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 11px; color: #86909c; margin-bottom: 10px; }
+  .queue-tabs { display: flex; gap: 12px; border-bottom: 1px solid #f0f1f3; margin-bottom: 10px; }
+  .queue-tab { font-size: 12px; color: #4e5969; padding: 6px 0; border-bottom: 2px solid transparent; cursor: pointer; }
+  .queue-tab.active { color: #2f7df6; border-bottom-color: #2f7df6; font-weight: 500; }
+  .queue-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 4px;
+    background: #e8f7e8; font-size: 12px; color: #1d2129;
+    margin-bottom: 6px;
+  }
+  .queue-num { color: #86909c; font-size: 11px; }
+  .queue-item .q-status { margin-left: auto; color: #389e0d; font-size: 11px; font-weight: 500; }
+
+  .modal-tabs {
+    display: flex; align-items: center;
+    height: 40px; padding: 0 20px;
+    border-bottom: 1px solid #f0f1f3;
+    flex-shrink: 0;
+  }
+  .modal-tab { font-size: 13px; color: #4e5969; padding: 0 12px; height: 100%; display: inline-flex; align-items: center; cursor: pointer; border-bottom: 2px solid transparent; }
+  .modal-tab.active { color: #2f7df6; border-bottom-color: #2f7df6; font-weight: 500; }
+  .modal-tab svg { width: 14px; height: 14px; margin-right: 4px; }
+  .modal-tab-actions { margin-left: auto; display: flex; gap: 4px; }
+  .icon-btn { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; color: #4e5969; border-radius: 4px; }
+  .icon-btn:hover { background: #f2f3f5; color: #1d2129; }
+  .icon-btn svg { width: 14px; height: 14px; }
+
+  .form-basics { display: grid; grid-template-columns: 100px 1fr; gap: 16px; }
+  .form-basics-img {
+    width: 100px; height: 100px;
+    background: #fafafa; border: 1px solid #f0f1f3; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .form-basics-replace {
+    position: absolute; top: 4px; right: 4px;
+    height: 18px; padding: 0 5px;
+    background: rgba(255,255,255,0.9); border: 1px solid #e5e6eb;
+    border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 2px;
+    cursor: pointer; z-index: 2;
+    color: #4e5969; font-size: 10px;
+  }
+  .form-basics-replace:hover { background: #fff; color: #1d2129; }
+  .form-basics-replace svg { width: 9px; height: 9px; }
+  .form-basics-img svg { width: 80%; height: 80%; }
+  .form-basics-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px 16px; }
+
+  /* ===== V1.8 AI识别区（上传控件在上，识别队列在下，整体在物料信息左边同等高度） ===== */
+  .ai-recog-section { background: #fff; border-radius: 6px; border: 1px solid #f0f1f3; overflow: hidden; display: flex; flex-direction: column; }
+  .ai-recog-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f0f1f3; background: #fafbfc; flex-shrink: 0; }
+  .ai-recog-title { font-size: 13px; font-weight: 600; color: #1d2129; display: inline-flex; align-items: center; }
+  .ai-recog-hint { font-size: 11px; color: #86909c; }
+  .ai-recog-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .ai-upload-pane { background: #fafafa; border-bottom: 1px solid #f0f1f3; padding: 14px 14px; flex-shrink: 0; }
+  .ai-queue-pane { flex: 1 1 auto; padding: 14px 16px; min-width: 0; overflow: hidden; }
+
+  .form-section.form-section-no-border { border: none; padding: 0; margin-top: 16px; }
+  .form-section-no-border .form-basics { align-items: flex-start; }
+
+  /* ===== V1.8 右分屏内左右双列（左：AI识别组件 / 右：物料信息，同等高度） ===== */
+  .right-split-row { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 16px; align-items: stretch; box-sizing: border-box; }
+  .right-split-row > .ai-recog-section { flex: 0 0 340px; min-width: 300px; margin: 0; box-sizing: border-box; }
+  .right-split-row > .material-form-section { flex: 1 1 480px; min-width: 420px; margin: 0; box-sizing: border-box; }
+
+  .material-form-section { background: #fff; margin: 12px; border-radius: 6px; border: 1px solid #f0f1f3; overflow: hidden; }
+  .material-form-section .form-section { border: none; padding: 16px 20px; margin: 0; }
+  .material-form-section .form-section + .form-section { border-top: 1px solid #f0f1f3; }
+
+  /* switch带"是/否"文字 */
+  .switch { position: relative; display: inline-block; width: 28px; height: 14px; background: #c9cdd4; border-radius: 7px; vertical-align: -2px; cursor: pointer; transition: background 0.2s; }
+  .switch::after { content: ''; position: absolute; left: 1px; top: 1px; width: 12px; height: 12px; background: #fff; border-radius: 50%; transition: left 0.2s; }
+  .switch.on { background: #2f7df6; }
+  .switch.on::after { left: 15px; }
+  .switch-on, .switch-off { display: none; margin-left: 4px; font-size: 11px; color: #1d2129; }
+  .switch.on .switch-on { display: inline; color: #2f7df6; font-weight: 500; }
+  .switch .switch-off { display: inline; color: #c9cdd4; }
+  .switch.on .switch-off { display: none; }
+  .switch-item { font-size: 12px; color: #4e5969; display: flex; align-items: center; gap: 4px; }
+
+  /* form-footer底部按钮区 */
+  .form-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 16px 20px; border-top: 1px solid #f0f1f3; background: #fafbfc; }
+
+  /* ===== 需求文档弹窗 ===== */
+  .doc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 3000; display: none; align-items: center; justify-content: center; }
+  .doc-overlay.active { display: flex; }
+  .doc-modal { width: 1000px; max-width: 92vw; max-height: 85vh; background: #fff; border-radius: 14px; box-shadow: 0 8px 40px rgba(0,0,0,.15); display: flex; flex-direction: column; overflow: hidden; animation: docIn .3s ease; }
+  @keyframes docIn { from { opacity: 0; transform: scale(.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .doc-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
+  .doc-header h2 { font-size: 17px; font-weight: 600; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+  .doc-close { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #999; font-size: 18px; transition: all .15s; }
+  .doc-close:hover { background: #f5f5f5; color: #333; }
+  .doc-main { display: flex; flex: 1; overflow: hidden; }
+  .doc-toc { width: 200px; flex-shrink: 0; border-right: 1px solid #f0f0f0; overflow-y: auto; padding: 12px 0; background: #fafbfc; }
+  .doc-toc-title { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: .5px; padding: 4px 16px 10px; }
+  .doc-toc-item { display: block; padding: 7px 16px; font-size: 12.5px; color: #666; text-decoration: none; cursor: pointer; transition: all .12s; border-left: 2px solid transparent; line-height: 1.5; }
+  .doc-toc-item:hover { background: #f0f0f5; color: #333; }
+  .doc-toc-item.active { background: #f0effe; color: #6366f1; border-left-color: #6366f1; font-weight: 500; }
+  .doc-body { flex: 1; overflow-y: auto; padding: 24px; }
+  .doc-section { margin-bottom: 28px; scroll-margin-top: 16px; }
+  .doc-section:last-child { margin-bottom: 0; }
+  .doc-section h3 { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #6366f1; display: inline-block; }
+  .doc-section p { font-size: 13.5px; color: #555; line-height: 1.7; margin-bottom: 10px; }
+  .doc-section strong { color: #1a1a1a; }
+  .doc-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12.5px; }
+  .doc-table th { background: #f5f6f8; color: #333; font-weight: 600; padding: 8px 12px; text-align: left; border: 1px solid #e8e8e8; }
+  .doc-table td { padding: 8px 12px; border: 1px solid #e8e8e8; color: #555; line-height: 1.6; }
+  .doc-table code { background: #f0f0f5; padding: 1px 5px; border-radius: 3px; font-size: 11.5px; color: #6366f1; }
+  .doc-badge-ac { display: inline-block; background: #6366f1; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .doc-code { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 16px; font-size: 12.5px; line-height: 1.7; font-family: 'SF Mono', Consolas, monospace; overflow-x: auto; white-space: pre-wrap; margin: 8px 0; }
+  .doc-callout { background: #f8f5ff; border-left: 3px solid #7c3aed; padding: 12px 16px; border-radius: 4px; line-height: 1.8; color: #333; font-size: 13px; margin: 10px 0; }
+  .doc-flow { background: #f8f9fb; border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.8; color: #444; margin: 8px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ========== Topbar ========== -->
+  <header class="topbar">
+    <button class="topbar-toggle" title="折叠">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    <div class="topbar-right">
+      <button class="topbar-btn">⌘ 商场版</button>
+      <button class="topbar-btn" id="btnDocModal" style="border-color:#6366f1;color:#6366f1;">📄 需求文档</button>
+      <button class="topbar-icon-btn" title="热门">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+      </button>
+      <button class="topbar-icon-btn" title="消息">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        <span class="badge">3</span>
+      </button>
+      <div class="topbar-user">
+        <span class="topbar-avatar">Lu</span>
+        <div class="topbar-user-text">
+          <span class="topbar-user-name">Luxshare Admin</span>
+          <span class="topbar-user-role">管理员</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== Main ========== -->
+  <div class="main">
+    <!-- Icon Rail -->
+    <aside class="icon-rail">
+      <button class="rail-item active" title="首页">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      </button>
+      <button class="rail-item" title="物料">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+      </button>
+      <button class="rail-item" title="搜索">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="rail-item" title="收藏">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
+      <button class="rail-item" title="应用">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </button>
+      <div class="rail-spacer"></div>
+      <button class="rail-collapse" title="折叠">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </aside>
+
+    <!-- AI Chat Pane -->
+    <section class="chat-pane" id="chatPane">
+      <div class="chat-header">
+        <span class="chat-header-logo">C</span>
+        <span class="chat-header-user">Luxshare Admin<span class="dot">1</span></span>
+      </div>
+
+      <div class="chat-body" id="chatBody">
+        <div class="msg-user">
+          <div class="bubble-user">帮我创建一个气缸物料，我这边有图片和规格书，你帮我识别一下属性自动填表。</div>
+        </div>
+        <div class="msg-ai">
+          <span class="ai-avatar">A</span>
+          <div class="ai-content">
+            <div class="ai-name">AI采购助手</div>
+            <div class="bubble-ai">
+              <p>好的！我可以帮您通过图片或文档自动识别物料属性，并自动填充到右边的物料表单。请在右侧「AI识别区」上传物料图片或拖入规格书（PDF/Word/Excel），我会自动识别以下信息：</p>
+              <ol class="motor-list">
+                <li><b>物料名称</b>：从图片/文档中提取物料名称（如"气缸"）</li>
+                <li><b>物料分类</b>：自动匹配物料大类和小类（如"气动元件 → 气缸"）</li>
+                <li><b>规格参数</b>：识别接口径、安装方式、缓冲形式、动作形式等关键属性</li>
+                <li><b>计量单位</b>：根据物料类型推荐默认单位（如"个"、"套"）</li>
+                <li><b>原图识别</b>：提取物料图片用于表单基本信息展示</li>
+              </ol>
+              <p>识别完成后，右侧表单会自动填充属性，您只需核对并补充必要信息即可提交。也可以直接输入物料名称，我来帮您推荐分类和属性。</p>
+            </div>
+          </div>
+        </div>
+        <div class="msg-ai">
+          <span class="ai-avatar">A</span>
+          <div class="ai-content">
+            <div class="ai-name">AI采购助手</div>
+            <div class="bubble-ai">
+              <p>已为您识别到物料 <b>气缸</b>，自动填充了以下属性：</p>
+              <div style="background:#f0f5ff;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:12.5px;line-height:1.9;color:#1d2129;">
+                ✅ 物料名称：气缸<br>
+                ✅ 物料分类：气动元件 / 气缸<br>
+                ✅ 气缸接口径：已识别<br>
+                ✅ 气缸安装方式：已识别<br>
+                ✅ 气缸缓冲形式：已识别<br>
+                ✅ 气缸动作形式：已识别<br>
+                ✅ 计量单位：个
+              </div>
+              <p>请在右侧表单核对信息。如需修改属性，可直接在表单中调整，也可以直接在这里告诉我，比如「把物料名称改成电磁阀」「计量单位改成套」，我会帮您更新右侧表单。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- V1.8: 识别澄清 — 展示每个属性的原文和识别依据 -->
+        <div class="msg-ai">
+          <span class="ai-avatar">A</span>
+          <div class="ai-content">
+            <div class="ai-name">AI采购助手</div>
+            <div class="bubble-ai">
+              <p>以下是各字段的<strong>识别澄清</strong>，您可以查看原文来源和识别依据：</p>
+              <div style="background:#fafbfc;border:1px solid #e8e8e8;border-radius:8px;padding:0;margin:8px 0;overflow:hidden;font-size:12px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:#f0f5ff;">
+                      <th style="padding:6px 8px;text-align:left;font-weight:600;color:#1d2129;border-bottom:1px solid #d6e4ff;font-size:11px;">字段</th>
+                      <th style="padding:6px 8px;text-align:left;font-weight:600;color:#1d2129;border-bottom:1px solid #d6e4ff;font-size:11px;">识别值</th>
+                      <th style="padding:6px 8px;text-align:left;font-weight:600;color:#1d2129;border-bottom:1px solid #d6e4ff;font-size:11px;">原文</th>
+                      <th style="padding:6px 8px;text-align:left;font-weight:600;color:#1d2129;border-bottom:1px solid #d6e4ff;font-size:11px;">识别依据</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#4e5969;">物料名称</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#1d2129;font-weight:500;">气缸</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;font-family:monospace;">"BULLS气缸"</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">OCR识别图片标题文字，提取关键词「气缸」</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#4e5969;">物料类型</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#1d2129;font-weight:500;">原料类</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">—</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">系统默认：气动元件分类对应「原料类」</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#4e5969;">气缸接管口径</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#1d2129;font-weight:500;">M5</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;font-family:monospace;">"接口: M5"</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">从规格书参数表提取接口螺纹规格</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#4e5969;">气缸安装方式</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#1d2129;font-weight:500;">脚座安装</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;font-family:monospace;">"安装: 脚座型"</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">关键词匹配标准安装方式枚举值</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#4e5969;">气缸缓冲形式</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#1d2129;font-weight:500;">气缓冲</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;font-family:monospace;">"缓冲: 气压缓冲"</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">关键词「气压」匹配「气缓冲」分类</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#4e5969;">气缸动作形式</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#1d2129;font-weight:500;">单作用</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;font-family:monospace;">"动作: 单作用"</td>
+                      <td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#86909c;">直接提取规格参数值</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 8px;color:#4e5969;">计量单位</td>
+                      <td style="padding:5px 8px;color:#1d2129;font-weight:500;">个</td>
+                      <td style="padding:5px 8px;color:#86909c;">—</td>
+                      <td style="padding:5px 8px;color:#86909c;">气缸类物料默认计量单位</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="font-size:12px;color:#86909c;">💡 您可以直接在对话框输入修改指令，例如：「物料名称改成电磁阀」「气缸缸径改成32」，我会实时更新右侧表单。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input">
+        <textarea id="chatTa" placeholder="输入修改指令，如「物料名称改成电磁阀」「计量单位改成套」…"></textarea>
+        <div class="chat-input-toolbar">
+          <button class="tool-btn" title="附件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <button class="tool-btn" title="图片">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <button class="tool-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            需求下单
+          </button>
+          <button class="tool-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            查询库存
+          </button>
+          <div class="tool-spacer"></div>
+          <button class="send-btn" id="sendBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            发送
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Draggable divider -->
+    <div class="divider" id="divider"></div>
+
+    <!-- Right Pane: Material Create -->
+    <section class="right-pane">
+      <header class="right-header">
+        <span class="right-header-title">物料创建 · AI智能采购系统</span>
+        <div class="right-header-actions">
+          <button class="right-header-btn">刷新</button>
+          <button class="right-header-btn">新窗口</button>
+          <button class="right-header-btn">关闭</button>
+        </div>
+      </header>
+
+      <div class="right-body" id="rightBody">
+        <div class="page-breadcrumb">
+          物料管理 <span class="sep">/</span> 物料库 <span class="sep">/</span> <span class="cur">物料创建</span>
+        </div>
+
+        <!-- V1.8：右分屏内左右双列 — 左：AI识别组件（上传+队列上下排） / 右：物料信息模块 -->
+        <div class="right-split-row">
+
+        <!-- AI识别组件（上：上传控件 / 下：识别队列） -->
+        <div class="ai-recog-section">
+          <div class="ai-recog-header">
+            <span class="ai-recog-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#2f7df6" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              AI 智能识别
+            </span>
+            <span class="ai-recog-hint">上传图片或文档，AI自动提取物料属性</span>
+          </div>
+          <div class="ai-recog-body">
+            <!-- 上方：上传控件 -->
+            <div class="ai-upload-pane">
+              <div class="modal-left-input-wrap">
+                <input class="modal-left-input" placeholder="请输入物料名称" />
+              </div>
+              <div class="modal-image">
+                <button class="modal-image-replace" title="更换图片">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  更换图片
+                </button>
+                <div class="modal-image-content">
+                  <svg width="100%" height="100%" viewBox="0 0 280 90" preserveAspectRatio="xMidYMid slice">
+                    <defs>
+                      <linearGradient id="bullsCourtGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#7f1d1d"/><stop offset="50%" stop-color="#b91c1c"/><stop offset="100%" stop-color="#7f1d1d"/>
+                      </linearGradient>
+                    </defs>
+                    <rect width="280" height="90" fill="url(#bullsCourtGrad)"/>
+                    <ellipse cx="50" cy="80" rx="60" ry="8" fill="rgba(255,255,255,0.06)"/>
+                    <ellipse cx="220" cy="80" rx="60" ry="8" fill="rgba(255,255,255,0.06)"/>
+                    <g transform="translate(40,15)">
+                      <ellipse cx="35" cy="68" rx="22" ry="3" fill="rgba(0,0,0,0.3)"/>
+                      <rect x="20" y="15" width="30" height="38" rx="4" fill="#dc2626"/>
+                      <rect x="20" y="15" width="30" height="6" fill="#991b1b"/>
+                      <text x="35" y="40" text-anchor="middle" font-family="Arial Black" font-size="11" fill="#fff" font-weight="900">BULLS</text>
+                      <circle cx="35" cy="13" r="9" fill="#f5d0a9"/>
+                      <path d="M28 11 Q35 6 42 11 L42 13 Q35 8 28 13 Z" fill="#fff"/>
+                      <rect x="32" y="50" width="6" height="18" fill="#f5d0a9"/>
+                      <rect x="30" y="55" width="10" height="14" fill="#1d2129" rx="1"/>
+                      <ellipse cx="55" cy="35" rx="7" ry="7" fill="#ea580c"/>
+                      <path d="M48 35 Q55 31 62 35 Q55 32 48 35 Z" fill="#1d2129" stroke="#000" stroke-width="0.5"/>
+                    </g>
+                    <g transform="translate(190,30)" opacity="0.5">
+                      <rect x="0" y="0" width="20" height="40" fill="#1d2129" rx="2"/>
+                      <circle cx="10" cy="10" r="6" fill="#f5d0a9"/>
+                    </g>
+                    <line x1="0" y1="55" x2="280" y2="55" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+                    <line x1="0" y1="75" x2="280" y2="75" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
+                  </svg>
+                </div>
+                <span class="modal-image-page">1/9</span>
+              </div>
+              <div class="modal-hint">📎 PDF/Docx/Excel/图片 可通过 Ctrl+V 粘贴或直接拖入</div>
+              <button class="btn-identify">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                开始识别
+              </button>
+              <div class="success-card">
+                <b>✓ 识别成功</b>
+                已自动填充物料属性
+              </div>
+            </div>
+            <!-- 下方：识别队列 -->
+            <div class="ai-queue-pane">
+              <div class="progress-row">
+                <span>识别队列 <span class="queue-count">1</span></span>
+                <span class="progress-dots">
+                  <span class="dot dot-green"></span><span>1</span>
+                  <span class="dot dot-blue"></span><span>0</span>
+                  <span class="dot dot-gray"></span><span>0</span>
+                </span>
+              </div>
+              <div class="progress-bar"><div class="progress-bar-fill" style="width:100%"></div></div>
+              <div class="progress-info"><span>处理进度 100%</span><span>预计剩余 0 秒</span></div>
+              <div class="queue-tabs">
+                <span class="queue-tab active">全部</span>
+                <span class="queue-tab">已完成</span>
+                <span class="queue-tab">已保存</span>
+                <span class="queue-tab">处理中</span>
+                <span class="queue-tab">待处理</span>
+              </div>
+              <div class="queue-item">
+                <span class="queue-num">#1</span>
+                <span>防静电吸笔&吸盘&防静电...</span>
+                <span class="q-status">✓ 识别完成</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 物料信息模块（右列，与AI识别组件同等高度） -->
+        <div class="material-form-section">
+          <div class="modal-tabs">
+            <span class="modal-tab active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              物料信息
+            </span>
+            <span class="modal-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              相识物料
+            </span>
+            <span class="modal-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              重置物料
+            </span>
+            <div class="modal-tab-actions">
+              <button class="icon-btn" title="点赞"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12"/><path d="M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H7"/></svg></button>
+              <button class="icon-btn" title="批注"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+            </div>
+          </div>
+
+          <!-- 基本信息 -->
+          <div class="form-section form-section-no-border">
+          <div class="form-basics">
+            <div class="form-basics-img">
+              <button class="form-basics-replace" title="更换图片">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                更换图片
+              </button>
+              <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <linearGradient id="bullsImgGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#7f1d1d"/><stop offset="50%" stop-color="#b91c1c"/><stop offset="100%" stop-color="#7f1d1d"/>
+                  </linearGradient>
+                </defs>
+                <rect width="100" height="100" fill="url(#bullsImgGrad)"/>
+                <ellipse cx="50" cy="92" rx="35" ry="5" fill="rgba(0,0,0,0.3)"/>
+                <g transform="translate(28,12)">
+                  <ellipse cx="22" cy="60" rx="18" ry="3" fill="rgba(0,0,0,0.4)"/>
+                  <rect x="8" y="20" width="28" height="35" rx="3" fill="#dc2626"/>
+                  <rect x="8" y="20" width="28" height="5" fill="#991b1b"/>
+                  <text x="22" y="40" text-anchor="middle" font-family="Arial Black" font-size="9" fill="#fff" font-weight="900">BULLS</text>
+                  <circle cx="22" cy="12" r="9" fill="#f5d0a9"/>
+                  <path d="M14 11 Q22 5 30 11 L30 13 Q22 7 14 13 Z" fill="#fff"/>
+                  <rect x="20" y="52" width="6" height="16" fill="#f5d0a9"/>
+                  <ellipse cx="40" cy="35" rx="7" ry="7" fill="#ea580c"/>
+                  <path d="M33 35 Q40 31 47 35 Q40 32 33 35 Z" fill="#1d2129"/>
+                </g>
+                <line x1="0" y1="60" x2="100" y2="60" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
+                <line x1="0" y1="80" x2="100" y2="80" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
+              </svg>
+            </div>
+            <div class="form-basics-fields">
+              <div class="form-field">
+                <label><span class="req">*</span>物料名称 <span class="ai-tip">AI推理生成，请确认</span></label>
+                <input class="form-input" value="气缸" />
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>物料组</label>
+                <input class="form-input" value="模具直配件及材料..." />
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>品牌</label>
+                <select class="form-select">
+                  <option>请选择品牌</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>物料类型 <span class="ai-tip">系统默认，请确认</span></label>
+                <select class="form-select"><option>原料类</option></select>
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>物料单位 <span class="ai-tip">AI推理生成，请确认</span></label>
+                <select class="form-select"><option>个</option></select>
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>产品层次 <span class="ai-tip">系统默认，请确认</span></label>
+                <select class="form-select"><option>Q310</option></select>
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>环保标记 <span class="ai-tip">系统默认，请确认</span></label>
+                <select class="form-select"><option>A</option></select>
+              </div>
+              <div class="form-field">
+                <label><span class="req">*</span>订货周期</label>
+                <select class="form-select"><option>30天</option></select>
+              </div>
+              <div class="form-field">
+                <label>旧料号</label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <input class="form-input" placeholder="请选择物料" />
+                  <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;align-items:center;gap:8px;font-size:12px;color:#86909c;">
+            <span style="color:#ad6800;background:#fffbe6;border:1px solid #ffe58f;padding:0 6px;border-radius:2px;font-size:10px;">* 备注说明</span>
+          </div>
+          <textarea class="form-textarea" style="margin-top:6px;">用户输入表明图片与商品无关，无法识别具体物料信息，需人工补充物料名称及规格</textarea>
+
+          <div class="switch-row" style="margin-top:14px;">
+            <div class="switch-item">是否定制品 <span class="switch on"><span class="switch-on">是</span></span></div>
+            <div class="switch-item">是否集采 <span class="switch"><span class="switch-off">否</span></span></div>
+            <div class="switch-item">是否查询料号 <span class="switch on"><span class="switch-on">是</span></span></div>
+            <div class="switch-item">是否管制物料 <span class="switch"><span class="switch-off">否</span></span></div>
+            <div class="switch-item">是否加急 <span class="switch"><span class="switch-off">否</span></span></div>
+          </div>
+        </div>
+
+        <!-- 物料属性 -->
+        <div class="form-section">
+          <div class="section-title">物料属性</div>
+          <div class="form-row form-row-2col">
+            <div class="form-field">
+              <label>产地</label>
+              <select class="form-select"><option>请选择产地</option></select>
+            </div>
+            <div class="form-field">
+              <label>材质</label>
+              <select class="form-select"><option>请选择材质</option></select>
+            </div>
+            <div class="form-field">
+              <label>*气缸接管口径</label>
+              <select class="form-select"><option>请选择气缸接管口径</option></select>
+            </div>
+            <div class="form-field">
+              <label>*气缸安装方式</label>
+              <select class="form-select"><option>请选择气缸安装方式</option></select>
+            </div>
+            <div class="form-field">
+              <label>*气缸缓冲形式</label>
+              <select class="form-select"><option>请选择气缸缓冲形式</option></select>
+            </div>
+            <div class="form-field">
+              <label>*气缸动作形式</label>
+              <select class="form-select"><option>请选择气缸动作形式</option></select>
+            </div>
+            <div class="form-field">
+              <label>气缸缸径</label>
+              <input class="form-input" placeholder="请输入气缸缸径" />
+            </div>
+            <div class="form-field">
+              <label>气缸行程</label>
+              <input class="form-input" placeholder="请输入气缸行程" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="form-footer">
+          <button class="btn btn-default">清空</button>
+          <button class="btn btn-default">重新识别</button>
+          <button class="btn btn-default">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            导出 Excel
+          </button>
+          <button class="btn btn-primary">确认保存</button>
+        </div>
+        <!-- /.material-form-section -->
+
+        </div>
+        <!-- /.right-split-row -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 需求文档弹窗 ===== -->
+<div class="doc-overlay" id="docOverlay">
+  <div class="doc-modal" onclick="event.stopPropagation()">
+    <div class="doc-header">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        AI物料创建助手 — 需求文档
+      </h2>
+      <button class="doc-close" onclick="closeDocModal()">✕</button>
+    </div>
+    <div class="doc-main">
+      <nav class="doc-toc" id="docToc">
+        <div class="doc-toc-title">目录</div>
+        <a class="doc-toc-item" data-target="sec-01" onclick="scrollToSection('sec-01')">01 — 页面目标</a>
+        <a class="doc-toc-item" data-target="sec-02" onclick="scrollToSection('sec-02')">02 — 用户故事</a>
+        <a class="doc-toc-item" data-target="sec-03" onclick="scrollToSection('sec-03')">03 — 信息架构</a>
+        <a class="doc-toc-item" data-target="sec-04" onclick="scrollToSection('sec-04')">04 — 业务流程</a>
+        <a class="doc-toc-item" data-target="sec-05" onclick="scrollToSection('sec-05')">05 — 提示词、Skill与Tool</a>
+        <a class="doc-toc-item" data-target="sec-06" onclick="scrollToSection('sec-06')">06 — 状态规则</a>
+        <a class="doc-toc-item" data-target="sec-07" onclick="scrollToSection('sec-07')">07 — 异常处理</a>
+        <a class="doc-toc-item" data-target="sec-08" onclick="scrollToSection('sec-08')">08 — 验收标准</a>
+        <a class="doc-toc-item" data-target="sec-09" onclick="scrollToSection('sec-09')">09 — 评测集合</a>
+        <a class="doc-toc-item" data-target="sec-10" onclick="scrollToSection('sec-10')">10 — 非功能性需求</a>
+      </nav>
+      <div class="doc-body" id="docBody">
+
+        <!-- 01 页面目标 -->
+        <div class="doc-section" id="sec-01">
+          <h3>01 — 页面目标</h3>
+          <p><strong>问题背景</strong></p>
+          <p>采购员创建物料时需手工填写大量属性字段（物料名称、分类、规格参数等），耗时长且易出错。尤其面对非标物料或仅有图片/规格书的场景，属性录入效率极低。</p>
+          <p><strong>核心价值</strong></p>
+          <p>在物料创建页面嵌入AI识别能力，采购员上传物料图片或规格书后，AI自动识别物料属性并填充表单，将物料创建时间从分钟级降至秒级。</p>
+          <p><strong>成功指标</strong></p>
+          <p>
+            (1) AI识别准确率 &gt;= 85%（核心属性：名称、分类、规格参数）<br>
+            (2) 单次识别响应时间 &lt; 5秒（超时阈值10秒，超过则降级为手动填写）<br>
+            (3) 物料创建平均耗时降低 &gt;= 60%<br>
+            &nbsp;&nbsp;&nbsp;· <strong>基线</strong>：当前手工创建一个物料平均耗时约8分钟（含查规格书、填字段、校对）<br>
+            &nbsp;&nbsp;&nbsp;· <strong>目标</strong>：AI辅助后平均耗时降至3.2分钟以内（识别+核对+补充+提交）
+          </p>
+        </div>
+
+        <!-- 02 用户故事 -->
+        <div class="doc-section" id="sec-02">
+          <h3>02 — 用户故事</h3>
+          <table class="doc-table"><thead><tr><th>角色</th><th>职责</th><th>核心关注</th><th>使用场景</th></tr></thead><tbody>
+            <tr><td><strong>采购员</strong></td><td>创建物料、维护物料属性</td><td>填表效率、属性准确性</td><td>日常新建物料，批量录入</td></tr>
+            <tr><td><strong>物料管理员</strong></td><td>审核物料、维护分类体系</td><td>分类合理性、属性完整性</td><td>审核新建物料，补充属性</td></tr>
+            </tbody></table>
+          <div class="doc-callout">
+            <strong>用户故事：</strong>作为<strong>采购员</strong>，在需要创建新物料时，我希望能<strong>上传物料图片或规格书，由AI自动识别物料属性并填充创建表单</strong>，获得物料名称、分类、规格参数等关键属性的智能推荐，以便在无需逐字段手工录入的情况下，快速完成物料创建，减少录入错误和时间成本。
+          </div>
+          <div class="doc-callout" style="border-left-color:#0d9488;">
+            <strong>用户故事（物料管理员）：</strong>作为<strong>物料管理员</strong>，在审核采购员提交的新建物料时，我希望能<strong>查看AI识别的原文来源和识别依据（识别澄清）</strong>，快速判断属性是否准确；对于置信度低的字段能够直接通过对话修改或手动调整，以便高效完成物料审核和分类体系维护，确保物料库数据的准确性和完整性。
+          </div>
+        </div>
+
+        <!-- 03 信息架构 -->
+        <div class="doc-section" id="sec-03">
+          <h3>03 — 信息架构</h3>
+          <p><strong>页面布局（V2.0）</strong></p>
+          <p>采用左右分屏布局：左侧为AI对话区（含对话历史、需求下单/查询库存快捷入口），右侧为物料创建页面。右侧内部分为<strong>左右两列，同等高度</strong>：</p>
+          <p>
+            (1) <strong>左列：AI识别组件</strong>（固定宽度~340px）—— 上下两部分组成一个完整组件：<br>
+            &nbsp;&nbsp;&nbsp;· <strong>上方：上传控件</strong>：物料名称输入框 + 图片/文档上传区（含更换图片、页码）+ 开始识别按钮 + 识别成功提示<br>
+            &nbsp;&nbsp;&nbsp;· <strong>下方：识别队列</strong>：处理进度条 + 状态色点（已完成/处理中/待处理）+ Tab筛选（全部/已完成/已保存/处理中/待处理）+ 队列项列表<br>
+            (2) <strong>右列：物料信息模块</strong>（弹性宽度）—— Tab切换（物料信息 / 相识物料 / 重置物料）+ 基本信息（100×100原图缩略图 + 9字段网格）+ 备注 + 开关组 + 物料属性（2列8项）+ 底部操作栏
+          </p>
+          <p><strong>AI对话区能力（V2.0）</strong></p>
+          <p>
+            · <strong>识别澄清</strong>：识别完成后，对话区自动推送一条澄清消息，以表格形式展示每个字段的「识别值 / 原文 / 识别依据」，让采购员了解每个属性的数据来源<br>
+            · <strong>对话改字段</strong>：采购员可在对话框输入指令（如「物料名称改成电磁阀」「计量单位改成套」），AI解析后实时更新右侧表单对应字段并高亮标注，同时回复确认消息<br>
+            · <strong>扩充别名匹配</strong> <span style="font-size:10px;color:#6366f1;">V2.0</span>：支持20+组字段别名（如「交期」→订货周期、「牌子」→品牌、「层次」→产品层次等），降低用户记忆精确字段名的成本<br>
+            · <strong>保存校验反馈</strong> <span style="font-size:10px;color:#6366f1;">V2.0</span>：点击保存时若有必填字段缺失，对话区自动推送缺失字段列表，引导采购员补充<br>
+            · <strong>多物料选择</strong> <span style="font-size:10px;color:#6366f1;">V2.0</span>：图片中检测到多个物料时，AI列出候选物料列表供采购员选择主物料
+          </p>
+          <p><strong>表单字段分组</strong></p>
+          <p>
+            · <strong>基本信息</strong>：物料图片、物料名称、物料组、品牌、物料类型、物料单位、产品层次、环保标记、订货周期、旧料号<br>
+            · <strong>规格参数</strong>（以气缸为例）：气缸接管口径、气缸安装方式、气缸缓冲形式、气缸动作形式、气缸缸径、气缸行程<br>
+            · <strong>补充信息</strong>：产地、材质
+          </p>
+          <p><strong>顶部入口</strong></p>
+          <p>Header栏右侧「商场版」按钮旁新增「需求文档」按钮，点击弹出本文档。</p>
+        </div>
+
+        <!-- 04 业务流程 -->
+        <div class="doc-section" id="sec-04">
+          <h3>04 — 业务流程</h3>
+          <p><strong>完整物料创建流水线（V2.0）：</strong></p>
+          <table class="doc-table"><thead><tr><th>步骤</th><th>动作</th><th>详情</th></tr></thead><tbody>
+            <tr><td>1. 触发</td><td>打开物料创建页面</td><td>页面默认展开AI识别组件，直接在右分屏操作</td></tr>
+            <tr><td>2. 输入</td><td>输入物料名称 / 上传图片</td><td>在AI识别组件上方上传区输入物料名称，或上传物料图片/PDF/Word/Excel（支持Ctrl+V粘贴或拖拽）</td></tr>
+            <tr><td>3. 识别</td><td>点击「开始识别」</td><td>AI调用识别引擎，从图片/文档中提取物料属性，同时根据物料名称匹配分类体系</td></tr>
+            <tr><td>4. 填充</td><td>自动填充表单</td><td>识别成功后，右侧物料信息模块自动填充物料名称、分类、规格参数等字段，识别组件下方队列显示处理状态</td></tr>
+            <tr><td>4a. 多物料选择 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>检测到多个物料时选择主物料</td><td>若图片中检测到多个物料，AI提示「检测到多个物体」，采购员从列表中选择主物料，仅将主物料属性填充表单</td></tr>
+            <tr><td>5. 澄清</td><td>对话区自动推送识别澄清</td><td>AI在对话区推送一条澄清消息，以表格展示每个字段的「识别值 / 原文 / 识别依据」，让采购员了解数据来源和推理过程</td></tr>
+            <tr><td>6. 修改</td><td>对话改字段 / 手动修改</td><td>采购员可在对话区输入指令（如「物料名称改成电磁阀」）由AI实时更新表单字段并高亮；也可直接在表单中手动修改</td></tr>
+            <tr><td>7. 校验</td><td>自动校验 + 人工核对</td><td>系统自动调用 validate_material_skill 校验必填字段完整性，标注缺失项；采购员核对所有属性，补充缺失字段</td></tr>
+            <tr><td>8. 提交</td><td>保存物料</td><td>点击底部「确认保存」按钮，系统再次校验必填字段（未通过则高亮提示+对话区推送缺失列表），通过后提交物料创建请求并完成创建</td></tr>
+            </tbody></table>
+          <div class="doc-flow">
+            <strong>流程图：</strong>打开页面 → 输入/上传 → 开始识别 → AI提取属性 → [多物料?] → 选择主物料 → 自动填表 → 对话澄清（原文+依据）→ 对话改字段/手动修改 → 自动校验+人工核对 → 保存提交<br>
+            <strong>异常分支：</strong>识别失败 → 提示错误原因 → 手动填表 → 保存提交<br>
+            <strong>对话改字段分支：</strong>用户输入指令 → AI解析字段名+新值 → 匹配表单字段 → 更新值+高亮 → 回复确认消息<br>
+            <strong>多物料分支：</strong>检测到多个物体 → 列出候选物料 → 采购员选择主物料 → 仅填充主物料属性
+          </div>
+        </div>
+
+        <!-- 05 提示词、Skill与Tool -->
+        <div class="doc-section" id="sec-05">
+          <h3>05 — 提示词、Skill与Tool设计</h3>
+          <p>本章定义物料创建Agent的完整能力体系，由三层构成：<strong>Prompt（提示词）</strong>驱动LLM的识别逻辑，<strong>Skill（技能）</strong>封装可复用的识别能力，<strong>Tool（工具）</strong>提供数据获取与系统交互的原子操作。</p>
+
+          <p style="margin-top:16px;font-weight:700;color:#6366f1;font-size:14px;">▍ 全局调度 Prompt</p>
+          <div class="doc-code">你是一个专业的物料创建调度助手，服务于供应链采购团队的物料创建场景。
+
+## 角色定位
+你是物料创建的「调度中枢」——接收采购员的物料创建请求，判断输入类型（文本/图片/文档），调度识别和匹配能力，汇总结果并自动填充表单。
+
+## 调度规则
+1. 接收物料名称或上传文件 → 调用 material_recognition_skill
+2. 识别结果 → 调用 classify_material_skill 匹配分类
+3. 若检测到多个物料 → 列出候选列表，等待采购员选择主物料
+4. 分类结果 → 调用 fill_form_skill 自动填充表单
+5. 填充完成 → 调用 clarify_recognition_skill 推送识别澄清（原文+依据）
+6. 采购员通过对话修改字段 → 调用 chat_to_form_skill 解析指令并更新表单
+7. 提交前 → 调用 validate_material_skill 校验必填字段完整性
+8. 校验通过 → 调用 save_material 提交；未通过 → 标注缺失项，引导补充
+
+## 行为准则
+- 不确定时不编造属性，明确标注"未识别到，请手动填写"
+- 物料名称必须准确，不可臆测
+- 分类匹配置信度 &lt; 70% 时标注"建议人工确认"
+- 识别澄清须如实标注原文来源和推理依据，不可编造
+- 对话改字段时须高亮标注修改的字段，并回复确认消息
+- 语气专业、高效，减少采购员等待焦虑</div>
+
+          <p style="margin-top:20px;font-weight:700;color:#e24b4a;font-size:14px;">▍ 维度一：物料识别 Prompt</p>
+          <div class="doc-code">你是一个专业的物料识别专家，从图片或规格书中提取物料核心属性。
+
+## 输入数据
+- 图片（物料实物照片 / 规格书截图）
+- 或文档（PDF / Word / Excel 格式规格书）
+- 或物料名称文本
+
+## 识别规则
+- 从图片中识别物料外观特征 → 推断物料类型
+- 从规格书中提取：物料名称、型号、规格参数、材质、品牌
+- 从物料名称文本中提取关键词 → 匹配物料知识库
+
+## 输出格式
+{
+  "materialName": "气缸",
+  "materialType": "气动元件",
+  "specifications": {
+    "interfaceDiameter": "M5",
+    "mountingMethod": "脚座安装",
+    "bufferType": "气缓冲",
+    "actionType": "单作用"
+  },
+  "unit": "个",
+  "confidence": 0.92
+}</div>
+
+          <p style="margin-top:20px;font-weight:700;color:#0d9488;font-size:14px;">▍ Skill 设计</p>
+          <table class="doc-table">
+            <thead><tr><th style="width:220px;">Skill 名称</th><th>职责</th><th style="width:180px;">调用的 Tool</th></tr></thead>
+            <tbody>
+              <tr><td><code>material_recognition_skill</code></td><td>从图片/文档/文本中识别物料名称和规格参数；若检测到多个物料，返回候选列表供采购员选择主物料 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td><code>ocr_extract</code><br><code>image_classify</code></td></tr>
+              <tr><td><code>classify_material_skill</code></td><td>根据识别结果匹配物料分类体系（大类/小类）</td><td><code>query_material_taxonomy</code></td></tr>
+              <tr><td><code>fill_form_skill</code></td><td>将识别和分类结果映射到表单字段并自动填充</td><td><code>fill_form_fields</code></td></tr>
+              <tr><td><code>clarify_recognition_skill</code><br><span class="doc-badge-ac" style="font-size:10px;">V1.8</span></td><td>识别后自动推送澄清消息，展示每个字段的原文和识别依据</td><td><code>get_recognition_trace</code></td></tr>
+              <tr><td><code>chat_to_form_skill</code><br><span class="doc-badge-ac" style="font-size:10px;">V1.8</span></td><td>解析用户对话指令，匹配表单字段并更新值，高亮标注</td><td><code>parse_field_command</code><br><code>update_form_field</code></td></tr>
+              <tr><td><code>validate_material_skill</code></td><td>校验必填字段完整性，标注缺失项。<strong>调用时机</strong>：①识别填充后自动调用一次（步骤7）②点击「确认保存」时再次调用（步骤8），未通过则阻止提交</td><td><code>check_required_fields</code></td></tr>
+            </tbody>
+          </table>
+
+          <p style="margin-top:20px;font-weight:700;color:#d97706;font-size:14px;">▍ Tool 设计</p>
+          <table class="doc-table">
+            <thead><tr><th style="width:200px;">Tool 名称</th><th>职责</th><th>输入</th><th>输出</th></tr></thead>
+            <tbody>
+              <tr><td><code>ocr_extract</code></td><td>从图片/PDF中提取文字内容</td><td>图片URL或文件流</td><td>文本内容 + 置信度</td></tr>
+              <tr><td><code>image_classify</code></td><td>对物料图片进行视觉分类</td><td>图片URL</td><td>物料类型 + 概率分布</td></tr>
+              <tr><td><code>query_material_taxonomy</code></td><td>查询物料分类体系，匹配大类/小类</td><td>物料名称/类型</td><td>分类路径 + 属性模板</td></tr>
+              <tr><td><code>fill_form_fields</code></td><td>将识别结果写入表单字段</td><td>属性键值对</td><td>填充成功/失败</td></tr>
+              <tr><td><code>get_recognition_trace</code><br><span class="doc-badge-ac" style="font-size:10px;">V1.8</span></td><td>获取每个识别字段的原文片段和推理依据</td><td>字段名列表</td><td>原文 + 依据 + 置信度</td></tr>
+              <tr><td><code>parse_field_command</code><br><span class="doc-badge-ac" style="font-size:10px;">V1.8</span></td><td>解析用户自然语言指令，提取字段名和新值</td><td>用户文本</td><td>{字段名, 新值} 或 null</td></tr>
+              <tr><td><code>update_form_field</code><br><span class="doc-badge-ac" style="font-size:10px;">V1.8</span></td><td>更新表单中指定字段的值并高亮标注</td><td>字段名 + 新值</td><td>更新成功/失败 + 旧值</td></tr>
+              <tr><td><code>check_required_fields</code></td><td>校验表单必填字段</td><td>表单数据</td><td>缺失字段列表</td></tr>
+              <tr><td><code>save_material</code></td><td>提交物料创建请求到后端</td><td>完整表单数据</td><td>物料编码 + 创建状态</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 06 状态规则 -->
+        <div class="doc-section" id="sec-06">
+          <h3>06 — 状态规则</h3>
+          <table class="doc-table"><thead><tr><th>状态</th><th>触发条件</th><th>界面表现</th></tr></thead><tbody>
+            <tr><td>待识别</td><td>页面打开，未点击识别</td><td>AI识别组件显示输入框 + 上传区 + 开始识别按钮</td></tr>
+            <tr><td>识别中</td><td>点击「开始识别」后</td><td>按钮loading态；进度条动画；队列状态为「处理中」</td></tr>
+            <tr><td>识别成功</td><td>AI返回识别结果</td><td>绿色「识别成功」提示；进度条100%；右侧表单自动填充；队列项标记「识别完成」</td></tr>
+            <tr><td>识别失败</td><td>AI无法识别或超时</td><td>红色错误提示；队列项标记「识别失败」；表单保持空白等待手动填写</td></tr>
+            <tr><td>部分识别</td><td>仅识别到部分属性</td><td>已识别属性自动填充；未识别字段标注「未识别到，请手动填写」</td></tr>
+            <tr><td>编辑中</td><td>采购员修改表单</td><td>字段高亮可编辑；底部保存按钮激活</td></tr>
+            <tr><td>对话编辑中 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>采购员通过对话修改字段</td><td>被修改字段蓝色高亮2秒；AI回复确认消息（旧值→新值）；底部保存按钮激活；表单进入编辑态</td></tr>
+            <tr><td>保存中</td><td>点击「保存」后</td><td>按钮loading态；提交成功后显示「物料创建成功」</td></tr>
+            </tbody></table>
+        </div>
+
+        <!-- 07 异常处理 -->
+        <div class="doc-section" id="sec-07">
+          <h3>07 — 异常处理</h3>
+          <table class="doc-table"><thead><tr><th>异常场景</th><th>处理方式</th></tr></thead><tbody>
+            <tr><td>图片模糊/不清晰</td><td>提示「图片清晰度不足，建议重新上传高清图片」</td></tr>
+            <tr><td>图片中无物料信息</td><td>提示「未识别到物料信息，请上传物料实物图或规格书」</td></tr>
+            <tr><td>物料类型未知</td><td>提示「未匹配到已知物料类型，请手动选择分类」</td></tr>
+            <tr><td>规格参数缺失</td><td>已识别字段正常填充；缺失字段标注「请手动补充」</td></tr>
+            <tr><td>分类匹配置信度低</td><td>标注「分类建议置信度较低，建议人工确认」</td></tr>
+            <tr><td>识别超时（&gt; 10秒）</td><td>显示「识别超时，请重试或手动填写」</td></tr>
+            <tr><td>必填字段未填</td><td>保存时校验，标注缺失的必填项，阻止提交</td></tr>
+            <tr><td>物料编码已存在</td><td>提示「该物料编码已存在，请检查或使用新编码」</td></tr>
+            <tr><td>文档格式不支持</td><td>提示「暂不支持该文件格式，请上传 PDF/Word/Excel/图片」</td></tr>
+            <tr><td>对话改字段-字段未匹配 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>AI回复「未匹配到对应字段」，列出当前可修改的字段列表（物料名称、物料组、品牌、物料类型、物料单位、产品层次、环保标记、订货周期、气缸接管口径等），引导采购员使用正确字段名</td></tr>
+            <tr><td>对话改字段-值不合法 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>如select字段新值不在选项中，AI自动添加新选项并标注「非标准值，请确认」；若为数值字段输入非数字，提示「请输入有效数值」</td></tr>
+            <tr><td>多物料识别 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>提示「检测到多个物体」，列出候选物料列表供采购员选择主物料，仅填充选中物料属性</td></tr>
+            </tbody></table>
+        </div>
+
+        <!-- 08 验收标准 -->
+        <div class="doc-section" id="sec-08">
+          <h3>08 — 验收标准</h3>
+          <table class="doc-table"><thead><tr><th>编号</th><th>验收项</th><th>通过标准</th></tr></thead><tbody>
+            <tr><td><span class="doc-badge-ac">AC-01</span></td><td>分屏布局</td><td>左侧AI对话区 + 右侧物料创建表单，中间可拖拽分隔条</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-02</span></td><td>AI识别组件布局</td><td>右分屏左列展示AI识别组件（上：上传控件，下：识别队列），与右列物料信息模块同等高度，无弹窗 <span style="font-size:10px;color:#6366f1;">V1.8</span></td></tr>
+            <tr><td><span class="doc-badge-ac">AC-03</span></td><td>上传控件区</td><td>包含物料名称输入框、图片上传区（含更换图片按钮、页码标识）、开始识别按钮、识别成功提示</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-04</span></td><td>物料信息模块</td><td>Tab切换（物料信息/相识物料/重置物料），表单区含基本信息（100×100图片+9字段网格）+备注+开关组+物料属性（2列8项），底部操作栏</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-05</span></td><td>图片上传</td><td>支持点击上传、Ctrl+V粘贴、拖拽上传；上传后显示缩略图和删除按钮 <span style="font-size:10px;color:#6366f1;">V2.0已实现</span></td></tr>
+            <tr><td><span class="doc-badge-ac">AC-06</span></td><td>识别成功填充</td><td>识别成功后右侧表单自动填充物料名称、分类、规格参数等字段</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-07</span></td><td>识别队列展示</td><td>队列显示处理进度百分比、预计剩余时间、Tab筛选（全部/已完成/已保存/处理中/待处理）、队列项列表</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-08</span></td><td>物料图片展示</td><td>表单基本信息区显示100×100物料图片缩略图，含更换图片按钮</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-09</span></td><td>表单校验</td><td>必填字段（*标注）未填时阻止保存并高亮提示，同时在对话区推送缺失字段列表 <span style="font-size:10px;color:#6366f1;">V2.0已实现</span></td></tr>
+            <tr><td><span class="doc-badge-ac">AC-10</span></td><td>需求文档入口</td><td>顶部「需求文档」按钮，点击弹出10段结构需求文档</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-11</span></td><td>需求文档目录</td><td>左侧TOC导航，点击跳转到对应段落，当前段落高亮</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-12</span></td><td>需求文档弹窗可关闭</td><td>关闭按钮和点击遮罩层均可关闭需求文档弹窗</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-13</span></td><td>AI对话文本</td><td>对话内容为创建物料相关（识别属性、推荐分类、自动填表）</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-14</span></td><td>旧料号选择</td><td>表单基本信息区有旧料号字段，支持点击搜索图标选择已有物料</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-15</span></td><td>识别组件上下布局 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td>AI识别组件内部为上下布局：上方上传控件（输入框+图片+识别按钮+成功提示），下方识别队列（进度条+Tab+队列项），两者合为一个完整组件</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-16</span></td><td>识别组件与物料信息同等高度 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td>AI识别组件在物料信息模块左边，两者顶部对齐、高度一致（align-items: stretch）</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-17</span></td><td>识别澄清消息 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td>识别完成后对话区自动推送澄清消息，以表格展示每个字段的「识别值 / 原文 / 识别依据」</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-18</span></td><td>对话改字段 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td>用户在对话框输入指令（如「物料名称改成电磁阀」），AI解析后实时更新右侧表单字段并高亮，同时回复确认消息（旧值→新值）</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-19</span></td><td>对话改字段-别名匹配 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td>支持字段别名（如「计量单位」匹配「物料单位」、「名称」匹配「物料名称」、「牌子」匹配「品牌」、「交期」匹配「订货周期」等20+组别名），未匹配时提示可用字段列表 <span style="font-size:10px;color:#6366f1;">V2.0扩充</span></td></tr>
+            <tr><td><span class="doc-badge-ac">AC-20</span></td><td>回车发送 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td>对话输入框支持 Enter 发送、Shift+Enter 换行</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-21</span></td><td>多物料选择 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>图片中检测到多个物料时，提示「检测到多个物体」，列出候选物料列表，采购员选择主物料后仅填充主物料属性</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-22</span></td><td>保存校验反馈 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>点击「确认保存」时，必填字段未填则阻止提交、字段红色高亮3秒、对话区推送缺失字段列表；全部通过则提示物料创建成功并生成物料编码</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-23</span></td><td>粘贴/拖拽上传 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>上传区支持Ctrl+V粘贴图片（监听paste事件）和拖拽文件（监听drop事件），操作后提示文案变更引导用户点击识别</td></tr>
+            <tr><td><span class="doc-badge-ac">AC-24</span></td><td>非功能性需求 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td>满足第10段非功能性需求：文件上传限制(20MB/类型白名单)、浏览器兼容(Chrome90+/Edge90+/Firefox88+)、分辨率适配(1366×768+)、AI可用率(≥99.5%)</td></tr>
+            </tbody></table>
+        </div>
+
+        <!-- 09 评测集合 -->
+        <div class="doc-section" id="sec-09">
+          <h3>09 — 评测集合</h3>
+          <p><strong>评测目标：</strong>验证AI物料识别引擎在各类典型及边界场景下，输出的识别结果是否符合预期，确保物料属性识别的准确性和完整性。</p>
+          <table class="doc-table"><thead><tr><th>编号</th><th>场景</th><th>难度</th><th>输入</th><th>预期输出</th><th>核心考核</th></tr></thead><tbody>
+            <tr><td>TC-01</td><td>正常</td><td><span style="color:#16a34a;">Easy</span></td><td>气缸实物高清图</td><td>名称=气缸，分类=气动元件，规格参数完整</td><td>基线识别准确性</td></tr>
+            <tr><td>TC-02</td><td>正常</td><td><span style="color:#16a34a;">Easy</span></td><td>物料名称"气缸"</td><td>匹配分类气动元件/气缸，推荐规格属性模板</td><td>文本匹配分类</td></tr>
+            <tr><td>TC-03</td><td>正常</td><td><span style="color:#d97706;">Medium</span></td><td>PDF规格书（含型号、参数表）</td><td>提取型号+全部规格参数，填充表单</td><td>文档解析能力</td></tr>
+            <tr><td>TC-04</td><td>边界</td><td><span style="color:#d97706;">Medium</span></td><td>模糊图片</td><td>提示清晰度不足，部分属性标注未识别</td><td>降级处理</td></tr>
+            <tr><td>TC-05</td><td>边界</td><td><span style="color:#d97706;">Medium</span></td><td>非标物料图片</td><td>提示类型未知，建议手动选择分类</td><td>未知类型处理</td></tr>
+            <tr><td>TC-06</td><td>边界</td><td><span style="color:#dc2626;">Hard</span></td><td>多物料混合图片</td><td>识别主物料，提示检测到多个物体</td><td>多目标识别</td></tr>
+            <tr><td>TC-07</td><td>极限</td><td><span style="color:#dc2626;">Hard</span></td><td>Excel规格书（多Sheet）</td><td>定位正确Sheet，提取属性表</td><td>复杂文档解析</td></tr>
+            <tr><td>TC-08</td><td>异常</td><td><span style="color:#d97706;">Medium</span></td><td>非物料图片（风景照）</td><td>提示未识别到物料信息</td><td>异常输入处理</td></tr>
+            <tr><td>TC-09</td><td>异常</td><td><span style="color:#16a34a;">Easy</span></td><td>不支持的文件格式(.zip)</td><td>提示暂不支持该格式</td><td>格式校验</td></tr>
+            <tr><td>TC-10</td><td>正常</td><td><span style="color:#d97706;">Medium</span></td><td>Ctrl+V粘贴图片</td><td>等同于上传，正常识别</td><td>粘贴上传链路</td></tr>
+            <tr><td>TC-11</td><td>正常 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td><span style="color:#16a34a;">Easy</span></td><td>识别后对话澄清消息</td><td>对话区推送表格，每个字段含识别值/原文/识别依据</td><td>识别澄清完整性</td></tr>
+            <tr><td>TC-12</td><td>正常 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td><span style="color:#16a34a;">Easy</span></td><td>对话输入「物料名称改成电磁阀」</td><td>表单物料名称字段更新为"电磁阀"并高亮，AI回复确认</td><td>对话改字段-基本</td></tr>
+            <tr><td>TC-13</td><td>正常 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td><span style="color:#d97706;">Medium</span></td><td>对话输入「计量单位改成套」（别名匹配）</td><td>匹配到「物料单位」select并更新为"套"</td><td>对话改字段-别名</td></tr>
+            <tr><td>TC-14</td><td>边界 <span style="font-size:10px;color:#6366f1;">V1.8</span></td><td><span style="color:#d97706;">Medium</span></td><td>对话输入「颜色改成红色」（不存在字段）</td><td>AI回复未匹配，列出可修改的字段列表</td><td>对话改字段-异常</td></tr>
+            <tr><td>TC-15</td><td>极限 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td><span style="color:#dc2626;">Hard</span></td><td>多物料混合图片</td><td>提示检测到多个物体，列出候选列表，选择主物料后仅填充主物料属性</td><td>多物料选择</td></tr>
+            <tr><td>TC-16</td><td>异常 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td><span style="color:#16a34a;">Easy</span></td><td>必填字段为空点击保存</td><td>阻止提交，缺失字段红色高亮，对话区推送缺失字段列表</td><td>表单校验</td></tr>
+            <tr><td>TC-17</td><td>正常 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td><span style="color:#16a34a;">Easy</span></td><td>Ctrl+V粘贴图片后点击识别</td><td>等同于文件上传，正常识别并填充表单</td><td>粘贴上传链路</td></tr>
+            <tr><td>TC-18</td><td>正常 <span style="font-size:10px;color:#6366f1;">V2.0</span></td><td><span style="color:#d97706;">Medium</span></td><td>对话输入「交期改成45天」（别名匹配订货周期）</td><td>匹配到「订货周期」select并更新为45天</td><td>对话改字段-扩充别名</td></tr>
+            </tbody></table>
+          <p style="font-size:12.5px;color:#888;margin-top:10px;">
+            <strong>Benchmark 设计质量自查：</strong>
+            场景覆盖正常(9) + 边界(3) + 极限(2) + 异常(3) = 17用例；难度梯度 Easy:Medium:Hard = 7:8:2 ≈ 41%:47%:12%。
+          </p>
+        </div>
+
+        <!-- 10 非功能性需求 -->
+        <div class="doc-section" id="sec-10">
+          <h3>10 — 非功能性需求 <span style="font-size:10px;color:#6366f1;">V2.0新增</span></h3>
+          <table class="doc-table"><thead><tr><th style="width:120px;">类别</th><th>要求</th><th style="width:160px;">指标</th></tr></thead><tbody>
+            <tr><td><strong>性能</strong></td><td>AI识别引擎支持并发请求</td><td>单用户识别响应 &lt; 5秒；同时10个采购员并发识别时响应 &lt; 10秒</td></tr>
+            <tr><td><strong>性能</strong></td><td>页面加载时间</td><td>首屏渲染 &lt; 2秒（不含AI识别引擎初始化）</td></tr>
+            <tr><td><strong>安全</strong></td><td>文件上传限制</td><td>单文件 &lt; 20MB；允许类型: jpg/png/bmp/pdf/docx/xlsx；拒绝可执行文件(.exe/.bat/.sh等)</td></tr>
+            <tr><td><strong>安全</strong></td><td>用户输入防注入</td><td>对话输入和物料名称字段进行XSS过滤和SQL注入防护</td></tr>
+            <tr><td><strong>安全</strong></td><td>操作审计</td><td>记录AI识别、对话改字段、物料提交等关键操作日志，保留6个月</td></tr>
+            <tr><td><strong>兼容性</strong></td><td>浏览器支持</td><td>Chrome 90+、Edge 90+、Firefox 88+（不支持IE）</td></tr>
+            <tr><td><strong>兼容性</strong></td><td>分辨率适配</td><td>最低1366×768；推荐1920×1080；flex-wrap响应式适配窄屏</td></tr>
+            <tr><td><strong>可用性</strong></td><td>AI识别引擎可用率</td><td>&gt;= 99.5%（月度），不可用时降级为手动填写</td></tr>
+            <tr><td><strong>可维护性</strong></td><td>物料分类体系更新</td><td>支持后台维护物料分类树和属性模板，无需修改前端代码</td></tr>
+            </tbody></table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Draggable divider
+  (function() {
+    const divider = document.getElementById('divider');
+    const chatPane = document.getElementById('chatPane');
+    let dragging = false;
+    let startX, startWidth;
+    divider.addEventListener('mousedown', (e) => {
+      dragging = true;
+      divider.classList.add('dragging');
+      startX = e.clientX;
+      startWidth = chatPane.offsetWidth;
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const newW = Math.min(Math.max(320, startWidth + dx), window.innerWidth - 400);
+      chatPane.style.width = newW + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      divider.classList.remove('dragging');
+      document.body.style.userSelect = '';
+    });
+  })();
+
+  // Send button + V1.8 对话改字段
+  (function() {
+    const ta = document.getElementById('chatTa');
+    const sendBtn = document.getElementById('sendBtn');
+    const body = document.getElementById('chatBody');
+
+    /* V1.8: 解析用户指令，匹配表单字段并更新值 */
+    function applyFieldCommand(text) {
+      // 匹配 "物料名称改成电磁阀" / "把计量单位改为套" / "气缸缸径修改为32"
+      var m = text.match(/(?:把)?(.+?)(?:改成|改为|修改为|更改为|改成)(.+)/);
+      if (!m) return null;
+      var fieldName = m[1].trim();
+      var newValue = m[2].trim();
+
+      // 遍历所有 .form-field，按 label 文本匹配
+      var fields = document.querySelectorAll('.material-form-section .form-field');
+      for (var i = 0; i < fields.length; i++) {
+        var labelEl = fields[i].querySelector('label');
+        if (!labelEl) continue;
+        // 提取 label 纯文本（去掉 * 和 AI提示）
+        var labelText = labelEl.textContent.replace(/[*\s]/g, '').replace(/AI推理生成.*|系统默认.*|请确认.*/g, '');
+        if (!labelText) continue;
+
+        var matched = false;
+        // 模糊匹配：label 包含字段名 或 字段名包含 label
+        if (labelText.indexOf(fieldName) >= 0 || fieldName.indexOf(labelText) >= 0) {
+          matched = true;
+        }
+        // 常见别名
+        var aliases = {
+          '计量单位': ['物料单位', '单位'],
+          '物料单位': ['计量单位', '单位'],
+          '物料名称': ['名称'],
+          '名称': ['物料名称'],
+          '品牌': ['牌子', '厂商'],
+          '牌子': ['品牌', '厂商'],
+          '物料组': ['组别', '组'],
+          '组别': ['物料组', '组'],
+          '物料类型': ['类型', '物料分类'],
+          '类型': ['物料类型', '物料分类'],
+          '产品层次': ['层次', '层次码'],
+          '环保标记': ['环保', '环保标识'],
+          '订货周期': ['交货周期', '周期', '交期'],
+          '旧料号': ['旧编号', '老料号'],
+          '气缸接管口径': ['接管口径', '接口径', '接口'],
+          '气缸安装方式': ['安装方式', '安装'],
+          '气缸缓冲形式': ['缓冲形式', '缓冲'],
+          '气缸动作形式': ['动作形式', '动作'],
+          '气缸缸径': ['缸径'],
+          '气缸行程': ['行程'],
+          '产地': ['原产地', '出产地'],
+          '材质': ['材料', '用料'],
+        };
+        if (aliases[fieldName]) {
+          for (var j = 0; j < aliases[fieldName].length; j++) {
+            if (labelText.indexOf(aliases[fieldName][j]) >= 0) { matched = true; break; }
+          }
+        }
+        if (!matched) continue;
+
+        var input = fields[i].querySelector('input.form-input');
+        var select = fields[i].querySelector('select.form-select');
+
+        if (input) {
+          var oldVal = input.value;
+          input.value = newValue;
+          flashHighlight(input);
+          return { field: fieldName, value: newValue, oldVal: oldVal, type: 'input' };
+        }
+        if (select) {
+          var oldValS = select.value;
+          var found = false;
+          for (var k = 0; k < select.options.length; k++) {
+            if (select.options[k].text.indexOf(newValue) >= 0 || newValue.indexOf(select.options[k].text) >= 0) {
+              select.selectedIndex = k;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            var newOpt = document.createElement('option');
+            newOpt.text = newValue;
+            newOpt.value = newValue;
+            select.add(newOpt);
+            select.value = newValue;
+          }
+          flashHighlight(select);
+          return { field: fieldName, value: newValue, oldVal: oldValS, type: 'select' };
+        }
+      }
+      return null;
+    }
+
+    function flashHighlight(el) {
+      el.style.borderColor = '#2f7df6';
+      el.style.boxShadow = '0 0 0 2px rgba(47,125,246,0.18)';
+      el.style.transition = 'all 0.3s';
+      setTimeout(function() {
+        el.style.borderColor = '';
+        el.style.boxShadow = '';
+      }, 2000);
+    }
+
+    function addAiMessage(html) {
+      var msg = document.createElement('div');
+      msg.className = 'msg-ai';
+      msg.innerHTML =
+        '<span class="ai-avatar">A</span>' +
+        '<div class="ai-content">' +
+        '<div class="ai-name">AI采购助手</div>' +
+        '<div class="bubble-ai">' + html + '</div>' +
+        '</div>';
+      body.appendChild(msg);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function sendMessage() {
+      var text = ta.value.trim();
+      if (!text) return;
+
+      // 添加用户消息
+      var userMsg = document.createElement('div');
+      userMsg.className = 'msg-user';
+      userMsg.innerHTML = '<div class="bubble-user">' + text.replace(/</g, '&lt;') + '</div>';
+      body.appendChild(userMsg);
+      ta.value = '';
+      ta.style.height = 'auto';
+      sendBtn.classList.remove('ready');
+      body.scrollTop = body.scrollHeight;
+
+      // V1.8: 尝试解析字段修改指令
+      var result = applyFieldCommand(text);
+      if (result) {
+        var confirmHtml =
+          '<p>已为您更新右侧表单：</p>' +
+          '<div style="background:#f0f5ff;border-radius:6px;padding:8px 12px;margin:6px 0;font-size:12.5px;line-height:1.8;color:#1d2129;">' +
+          '✅ <b>' + result.field + '</b>：' +
+          (result.oldVal ? '<span style="color:#86909c;text-decoration:line-through;">' + result.oldVal + '</span> → ' : '') +
+          '<span style="color:#2f7df6;font-weight:600;">' + result.value + '</span>' +
+          '</div>' +
+          '<p style="font-size:12px;color:#86909c;">字段已高亮标注，请在右侧表单确认。如还需修改其他属性，继续告诉我即可。</p>';
+        setTimeout(function() { addAiMessage(confirmHtml); }, 300);
+      } else {
+        // 非修改指令的通用回复
+        var isModify = /改成|改为|修改|更改/.test(text);
+        if (isModify) {
+          var suggestHtml =
+            '<p>抱歉，未能匹配到对应字段。当前可修改的字段包括：</p>' +
+            '<div style="background:#fafbfc;border-radius:6px;padding:8px 12px;margin:6px 0;font-size:12px;line-height:1.8;color:#4e5969;">' +
+            '物料名称、物料组、品牌、物料类型、计量单位、产品层次、环保标记、订货周期、旧料号、' +
+            '气缸接管口径、气缸安装方式、气缸缓冲形式、气缸动作形式、气缸缸径、气缸行程、产地、材质' +
+            '</div>' +
+            '<p style="font-size:12px;color:#86909c;">例如：「物料名称改成电磁阀」「气缸缸径改成32」</p>';
+          setTimeout(function() { addAiMessage(suggestHtml); }, 300);
+        } else {
+          var genericHtml =
+            '<p>收到！如果您需要修改右侧表单的属性，可以直接告诉我，例如「物料名称改成电磁阀」「计量单位改成套」。我会实时帮您更新表单。</p>';
+          setTimeout(function() { addAiMessage(genericHtml); }, 300);
+        }
+      }
+    }
+
+    ta.addEventListener('input', function() {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(120, ta.scrollHeight) + 'px';
+      sendBtn.classList.toggle('ready', ta.value.trim().length > 0);
+    });
+    ta.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    sendBtn.addEventListener('click', sendMessage);
+  })();
+
+
+
+
+  // Switch toggle
+  document.addEventListener('click', (e) => {
+    if (!e.target.classList) return;
+    if (e.target.classList.contains('switch')) {
+      e.target.classList.toggle('on');
+      const onSpan = e.target.querySelector('.switch-on');
+      const offSpan = e.target.querySelector('.switch-off');
+      if (e.target.classList.contains('on')) {
+        if (offSpan) offSpan.style.display = 'none';
+        if (onSpan) onSpan.style.display = '';
+      } else {
+        if (offSpan) offSpan.style.display = '';
+        if (onSpan) onSpan.style.display = 'none';
+      }
+    }
+  });
+
+  // ===== 需求文档弹窗 =====
+  function openDocModal() {
+    const overlay = document.getElementById('docOverlay');
+    if (overlay) {
+      overlay.classList.add('active');
+      // 默认高亮第一项
+      const firstItem = overlay.querySelector('.doc-toc-item');
+      if (firstItem) firstItem.classList.add('active');
+      // 滚动监听 - 高亮当前章节
+      const docBody = document.getElementById('docBody');
+      const tocItems = overlay.querySelectorAll('.doc-toc-item');
+      if (docBody) {
+        docBody.onscroll = function() {
+          const sections = overlay.querySelectorAll('.doc-section');
+          let currentId = '';
+          sections.forEach(function(sec) {
+            if (sec.offsetTop - docBody.scrollTop <= 60) {
+              currentId = sec.id;
+            }
+          });
+          tocItems.forEach(function(item) {
+            if (item.dataset.target === currentId) {
+              item.classList.add('active');
+            } else {
+              item.classList.remove('active');
+            }
+          });
+        };
+      }
+    }
+  }
+  function closeDocModal() {
+    const overlay = document.getElementById('docOverlay');
+    if (overlay) overlay.classList.remove('active');
+  }
+  function scrollToSection(id) {
+    const sec = document.getElementById(id);
+    const docBody = document.getElementById('docBody');
+    if (sec && docBody) {
+      docBody.scrollTo({ top: sec.offsetTop - 16, behavior: 'smooth' });
+    }
+    // 更新TOC高亮
+    const tocItems = document.querySelectorAll('.doc-toc-item');
+    tocItems.forEach(function(item) {
+      if (item.dataset.target === id) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+  // 绑定需求文档按钮
+  const btnDoc = document.getElementById('btnDocModal');
+  if (btnDoc) {
+    btnDoc.addEventListener('click', openDocModal);
+  }
+  // 点击遮罩关闭
+  const docOverlay = document.getElementById('docOverlay');
+  if (docOverlay) {
+    docOverlay.addEventListener('click', closeDocModal);
+  }
+
+  // ===== V2.0 AC-05: Ctrl+V粘贴上传 + 拖拽上传 =====
+  (function() {
+    var uploadArea = document.querySelector('.ai-upload-pane .modal-image');
+    if (!uploadArea) return;
+
+    // 拖拽视觉反馈
+    uploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#2f7df6';
+      uploadArea.style.boxShadow = '0 0 0 2px rgba(47,125,246,0.18)';
+    });
+    uploadArea.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      uploadArea.style.boxShadow = '';
+    });
+    uploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      uploadArea.style.boxShadow = '';
+      var files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        var hint = uploadArea.parentNode.querySelector('.modal-hint');
+        if (hint) {
+          hint.textContent = '已拖入文件: ' + files[0].name + '，点击「开始识别」';
+          hint.style.color = '#2f7df6';
+        }
+      }
+    });
+
+    // Ctrl+V 粘贴图片
+    document.addEventListener('paste', function(e) {
+      var items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') >= 0) {
+          var hint = uploadArea.parentNode.querySelector('.modal-hint');
+          if (hint) {
+            hint.textContent = '已粘贴图片，点击「开始识别」';
+            hint.style.color = '#2f7df6';
+          }
+          break;
+        }
+      }
+    });
+  })();
+
+  // ===== V2.0 AC-09: 表单必填校验 =====
+  (function() {
+    var saveBtn = document.querySelector('.form-footer .btn-primary');
+    if (!saveBtn) return;
+    saveBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var missing = [];
+      var fields = document.querySelectorAll('.material-form-section .form-field');
+      fields.forEach(function(field) {
+        var label = field.querySelector('label');
+        if (!label) return;
+        var isRequired = label.querySelector('.req');
+        if (!isRequired) return;
+
+        var input = field.querySelector('input.form-input');
+        var select = field.querySelector('select.form-select');
+        var val = '';
+        if (input) val = input.value.trim();
+        else if (select) val = select.value.trim();
+
+        if (!val || val === '请选择品牌' || val.indexOf('请选择') >= 0 || val === '请输入物料名称') {
+          missing.push(label.textContent.replace(/[*\s]/g, '').replace(/AI推理生成.*|系统默认.*|请确认.*/g, ''));
+          var target = input || select;
+          if (target) {
+            target.style.borderColor = '#e24b4a';
+            target.style.boxShadow = '0 0 0 2px rgba(226,75,74,0.15)';
+            (function(t) {
+              setTimeout(function() {
+                t.style.borderColor = '';
+                t.style.boxShadow = '';
+              }, 3000);
+            })(target);
+          }
+        }
+      });
+
+      if (missing.length > 0) {
+        var errorHtml = '<p style="color:#e24b4a;font-weight:600;">以下必填字段未填写，请补充：</p>' +
+          '<div style="background:#fef0f0;border-radius:6px;padding:8px 12px;margin:6px 0;font-size:12.5px;color:#791f1f;">' +
+          missing.join('、') + '</div>';
+        var chatBody = document.getElementById('chatBody');
+        if (chatBody) {
+          var msg = document.createElement('div');
+          msg.className = 'msg-ai';
+          msg.innerHTML = '<span class="ai-avatar">A</span><div class="ai-content"><div class="ai-name">AI采购助手</div><div class="bubble-ai">' + errorHtml + '</div></div>';
+          chatBody.appendChild(msg);
+          chatBody.scrollTop = chatBody.scrollHeight;
+        }
+      } else {
+        var successHtml = '<p>物料创建成功！</p><div style="background:#f0f5ff;border-radius:6px;padding:8px 12px;margin:6px 0;font-size:12.5px;color:#1d2129;">物料编码: <b>NEW-' + Date.now().toString().slice(-6) + '</b> 已生成</div>';
+        var chatBody2 = document.getElementById('chatBody');
+        if (chatBody2) {
+          var msg2 = document.createElement('div');
+          msg2.className = 'msg-ai';
+          msg2.innerHTML = '<span class="ai-avatar">A</span><div class="ai-content"><div class="ai-name">AI采购助手</div><div class="bubble-ai">' + successHtml + '</div></div>';
+          chatBody2.appendChild(msg2);
+          chatBody2.scrollTop = chatBody2.scrollHeight;
+        }
+      }
+    });
+  })();
+</script>
+</body>
+</html>
