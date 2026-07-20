@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>立讯AI采购平台 · 询价单 AI 助手</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: {
+      brand:'#1890ff','brand-hover':'#40a9ff','brand-active':'#096dd9',
+      surface:'#fff',background:'#f5f5f5',border:'#f0f0f0','border-strong':'#d9d9d9',
+      'text-primary':'#262626','text-secondary':'#595959','text-tertiary':'#8c8c8c',
+      success:'#52c41a',warning:'#faad14',error:'#ff4d4f',ai:'#13c2c2'
+    }}}}
+  </script>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;}
+    .sidebar-scroll::-webkit-scrollbar{width:6px;}
+    .sidebar-scroll::-webkit-scrollbar-thumb{background:#d9d9d9;border-radius:3px;}
+    .status-badge{display:inline-flex;align-items:center;padding:1px 8px;font-size:12px;border-radius:2px;border:1px solid;}
+    .input-box{height:32px;padding:0 12px;font-size:13px;border:1px solid #d9d9d9;border-radius:4px;background:#fff;}
+    .input-box:focus{outline:none;border-color:#1890ff;}
+    .table-row:hover td{background:#fafafa;}
+    .ai-gradient{background:linear-gradient(135deg,#13c2c2,#36cfc9);}
+    .ai-title{background:linear-gradient(90deg,#1677ff,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent;}
+    #aiDrawer{transition:transform .3s cubic-bezier(.22,.61,.36,1);}
+    #aiMask{transition:opacity .3s ease;}
+    .chip-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+
+    /* ===== AI 回答可视化组件 ===== */
+    .ai-card{background:#fff;border:1px solid #f0f0f0;border-radius:12px;padding:12px;margin-top:2px;}
+    .ai-card h4{font-size:13px;font-weight:600;color:#262626;margin:0 0 8px;}
+    .ai-metric{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+    .ai-metric .m{flex:1 1 70px;background:#fafafa;border-radius:8px;padding:6px 8px;text-align:center;min-width:0;}
+    .ai-metric .m b{display:block;font-size:16px;color:#262626;line-height:1.2;}
+    .ai-metric .m span{font-size:11px;color:#8c8c8c;}
+    .dist-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;}
+    .dist-row .nm{width:52px;color:#595959;flex-shrink:0;}
+    .dist-row .track{flex:1;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;}
+    .dist-row .fill{height:100%;border-radius:4px;}
+    .dist-row .val{width:58px;text-align:right;color:#595959;flex-shrink:0;font-size:11px;}
+    .mini-bar{height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;flex:1;min-width:40px;}
+    .mini-bar>span{display:block;height:100%;border-radius:3px;}
+    .resp-card{border:1px solid #f0f0f0;border-radius:10px;padding:8px 10px;margin-top:8px;}
+    .resp-card.low{border-color:#ffccc7;background:#fff2f0;}
+    tbody .urgent{background:#fff2f0;}
+    .kv{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed #f0f0f0;}
+    .kv .k{color:#8c8c8c;flex-shrink:0;}
+    .kv .v{color:#262626;text-align:right;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+    /* ===== 需求文档弹窗（嵌入询价单页面） ===== */
+    .doc-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:1000;}
+    .doc-modal-overlay.show{display:flex;}
+    .doc-modal{width:min(1000px,94vw);height:min(765px,90vh);background:#fff;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.18);}
+    .doc-modal-header{height:69px;flex:0 0 69px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #f0f0f0;}
+    .doc-modal-header .title{font-size:17px;font-weight:600;color:#1a1a1a;}
+    .doc-modal-header .subtitle{font-size:12px;color:#8c8c8c;margin-top:3px;}
+    .doc-close{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;background:transparent;color:#8c8c8c;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+    .doc-close:hover{background:#f5f5f5;color:#1a1a1a;}
+    .doc-modal-main{flex:1;display:flex;overflow:hidden;}
+    .doc-toc{width:200px;flex:0 0 200px;height:100%;overflow-y:auto;background:#fafafa;border-right:1px solid #f0f0f0;padding:8px 0;}
+    .doc-toc-label{font-size:11px;font-weight:600;letter-spacing:1px;color:#bfbfbf;padding:8px 16px 6px;}
+    .doc-toc-item{display:block;padding:10px 16px;font-size:13px;color:#595959;cursor:pointer;text-decoration:none;border-left:3px solid transparent;transition:background .15s,color .15s;line-height:1.3;}
+    .doc-toc-item:hover{background:#f0f0f0;}
+    .doc-toc-item.active{background:#f0effe;color:#6366f1;border-left:3px solid #6366f1;font-weight:600;}
+    .doc-modal-body{flex:1;height:100%;overflow-y:auto;padding:24px 28px;position:relative;scroll-behavior:smooth;}
+    .doc-sec{margin-bottom:34px;scroll-margin-top:12px;}
+    .doc-chapter{font-size:17px;font-weight:600;color:#1a1a1a;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid #f0f0f0;}
+    .doc-sub{font-size:14px;font-weight:600;color:#262626;margin:18px 0 6px;}
+    .doc-p{font-size:13.5px;color:#595959;line-height:1.75;margin:6px 0;}
+    .doc-ul{font-size:13.5px;color:#595959;line-height:1.7;margin:6px 0;padding-left:20px;}
+    .doc-ul li{margin:4px 0;}
+    .doc-ul b{color:#262626;}
+    table.doc-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0;}
+    table.doc-table th,table.doc-table td{border:1px solid #f0f0f0;padding:8px 10px;text-align:left;vertical-align:top;}
+    table.doc-table th{background:#fafafa;color:#595959;font-weight:600;}
+    table.doc-table td{color:#262626;}
+    .tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:12px;font-weight:500;line-height:1.6;}
+    .tag-blue{background:#e6f4ff;color:#1677ff;}
+    .tag-green{background:#f6ffed;color:#52c41a;}
+    .tag-orange{background:#fff7e6;color:#fa8c16;}
+    .tag-red{background:#fff1f0;color:#ff4d4f;}
+    .tag-purple{background:#f9f0ff;color:#722ed1;}
+    .doc-note{font-size:12px;color:#bfbfbf;margin-top:24px;}
+  </style>
+</head>
+<body class="bg-background text-text-primary text-sm antialiased">
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Left Sidebar -->
+  <aside class="w-[200px] flex-shrink-0 bg-surface border-r border-border flex flex-col">
+    <div class="h-16 flex items-center px-4 border-b border-border">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded ai-gradient flex items-center justify-center text-white font-bold text-xs">LX</div>
+        <div>
+          <div class="text-xs font-semibold text-text-primary leading-tight">LUXSHARE ICT</div>
+          <div class="text-[10px] text-text-tertiary leading-tight">供应链管理平台</div>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto sidebar-scroll py-2">
+      <ul class="space-y-0.5">
+        <li><a href="#" class="flex items-center gap-3 h-10 px-4 text-text-secondary hover:text-text-primary hover:bg-gray-50 rounded mx-2"><span>工作台</span></a></li>
+        <li><a href="#" onclick="openDrawer();return false;" class="flex items-center gap-3 h-10 px-4 text-text-secondary hover:text-text-primary hover:bg-gray-50 rounded mx-2">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M9 3h6M8.5 13h.01M15.5 13h.01"/></svg>
+          <span>AI助手</span></a></li>
+        <li><button class="w-full flex items-center justify-between h-10 px-4 text-text-secondary hover:bg-gray-50 rounded mx-2" onclick="this.nextElementSibling.classList.toggle('hidden')"><span>物料管理</span><span class="text-text-tertiary">›</span></button><ul class="hidden pl-10 pr-2 py-1 space-y-0.5"><li><a href="#" class="block h-8 px-3 text-text-secondary hover:bg-gray-50 rounded">物料库</a></li></ul></li>
+        <li><button class="w-full flex items-center justify-between h-10 px-4 text-text-secondary hover:bg-gray-50 rounded mx-2" onclick="this.nextElementSibling.classList.toggle('hidden')"><span>供应商管理</span><span class="text-text-tertiary">›</span></button><ul class="hidden pl-10 pr-2 py-1 space-y-0.5"><li><a href="#" class="block h-8 px-3 text-text-secondary hover:bg-gray-50 rounded">合格供应商</a></li></ul></li>
+        <li>
+          <button class="w-full flex items-center justify-between h-10 px-4 text-text-secondary hover:bg-gray-50 rounded mx-2" onclick="this.nextElementSibling.classList.toggle('hidden')"><span>寻源管理</span><span class="text-text-tertiary rotate-90">›</span></button>
+          <ul class="pl-10 pr-2 py-1 space-y-0.5">
+            <li><a href="#" id="sideList" onclick="showView('list');return false;" class="block h-8 px-3 text-text-secondary hover:bg-gray-50 rounded">询价单</a></li>
+            <li><a href="#" class="block h-8 px-3 text-text-secondary hover:bg-gray-50 rounded">比价单</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+    <div class="px-4 py-3 border-t border-border text-[10px] text-text-tertiary">供应链管理平台 v0.0.1</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <header class="h-12 bg-surface border-b border-border flex items-stretch justify-between px-4 flex-shrink-0">
+      <!-- Top tabs -->
+      <div class="flex items-stretch gap-0 h-full">
+        <button class="px-4 h-full text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent flex items-center">工作台</button>
+        <button id="tabList" onclick="showView('list')" class="px-4 h-full text-sm font-medium text-brand bg-white border-b-2 border-brand flex items-center gap-2">
+          <span>询价单</span>
+        </button>
+        <button class="ml-2 w-6 h-6 self-center rounded flex items-center justify-center text-text-tertiary hover:text-text-primary border border-border text-base" title="新建标签页">+</button>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openDoc()" class="flex items-center gap-1.5 px-3 h-8 rounded-md border border-border bg-white text-text-secondary text-[13px] hover:border-brand hover:text-brand transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          需求文档</button>
+        <button onclick="openDrawer()" class="flex items-center gap-1.5 px-4 h-8 rounded-full ai-gradient text-white text-[13px] hover:opacity-90 transition shadow-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6L12 2zM18 14l.9 2.4L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.6L18 14z"/></svg>
+          AI助手</button>
+        <button class="relative text-text-secondary hover:text-text-primary"><span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-error rounded-full border border-white"></span>🔔</button>
+        <div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">吴</div><span class="text-text-secondary">吴焕军</span></div>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-auto p-6">
+      <!-- LIST VIEW -->
+      <section id="viewList" class="hidden">
+        <div class="mb-4">
+          <h1 class="text-xl font-semibold text-text-primary mb-5">询价单</h1>
+          <div class="border-b border-border flex items-center gap-0" id="statusTabs">
+            <button class="px-4 py-3 text-sm font-medium text-brand border-b-2 border-brand bg-white" onclick="filterList('全部')">全部 <span class="ml-1 text-xs text-brand">148</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('草稿')">草稿 <span class="ml-1 text-xs text-text-tertiary">32</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('报价中')">报价中 <span class="ml-1 text-xs text-text-tertiary">13</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('比价中')">比价中 <span class="ml-1 text-xs text-text-tertiary">15</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('议价中')">议价中 <span class="ml-1 text-xs text-text-tertiary">0</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('核价中')">核价中 <span class="ml-1 text-xs text-text-tertiary">26</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('已完成')">已完成 <span class="ml-1 text-xs text-text-tertiary">15</span></button>
+            <button class="px-4 py-3 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent" onclick="filterList('已取消')">已取消 <span class="ml-1 text-xs text-text-tertiary">47</span></button>
+          </div>
+        </div>
+        <div class="bg-surface rounded-lg border border-border p-5">
+          <input id="listSearch" oninput="renderList()" placeholder="搜索询价编号/标题" class="input-box w-64 mb-4">
+          <div class="overflow-x-auto border border-border rounded">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-gray-50 text-text-secondary"><tr>
+                <th class="px-4 py-3 font-medium border-b border-border">询价编号</th>
+                <th class="px-4 py-3 font-medium border-b border-border min-w-[240px]">询价标题</th>
+                <th class="px-4 py-3 font-medium border-b border-border">询价状态</th>
+                <th class="px-4 py-3 font-medium border-b border-border">截止时间</th>
+                <th class="px-4 py-3 font-medium border-b border-border">物料报价进度</th>
+                <th class="px-4 py-3 font-medium border-b border-border">供应商报价进度</th>
+                <th class="px-4 py-3 font-medium border-b border-border">被邀供应商数</th>
+              </tr></thead>
+              <tbody id="listBody" class="divide-y divide-border"></tbody>
+            </table>
+          </div>
+          <div class="text-text-secondary text-sm mt-3" id="listCount"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ===================== AI Drawer (V2.1 right-side) ===================== -->
+<div id="aiMask" onclick="closeDrawer()" class="fixed inset-0 bg-black/25 opacity-0 pointer-events-none z-40"></div>
+<aside id="aiDrawer" class="fixed top-0 right-0 h-full w-[min(420px,96vw)] bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.12)] rounded-l-2xl translate-x-full z-50 flex flex-col">
+  <!-- 抽屉头部：V2.1 风格，右侧 3 个图标按钮 -->
+  <div class="h-14 flex items-center justify-end gap-1 px-3 border-b border-border flex-shrink-0">
+    <button class="w-8 h-8 rounded-full flex items-center justify-center text-text-tertiary hover:bg-gray-50" title="新建对话"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="w-8 h-8 rounded-full flex items-center justify-center text-text-tertiary hover:bg-gray-50" title="历史对话"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
+    <button onclick="closeDrawer()" class="w-8 h-8 rounded-full flex items-center justify-center text-text-tertiary hover:bg-gray-50" title="关闭"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div id="aiScroll" class="flex-1 overflow-y-auto px-4 py-5">
+    <div class="flex flex-col items-center text-center pt-4 pb-2">
+      <div class="w-16 h-16 rounded-full ai-gradient flex items-center justify-center text-white mb-4 shadow-lg">
+        <svg class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M9.5 3h5M8.5 13h.01M15.5 13h.01M9 16h6"/></svg>
+      </div>
+      <div class="text-base">Hi~我是<span class="ai-title font-semibold">立讯AI助手</span>，有什么可以帮你？</div>
+      <div class="text-xs text-text-tertiary mt-1.5">可以帮你查状态、看风险、分析供应商与物料、看趋势——点下方示例直接问</div>
+    </div>
+    <div class="text-xs text-text-tertiary mt-7 mb-2 px-1">快捷场景</div>
+    <div id="aiChips" class="space-y-2">
+      <button onclick="sendChat('询价单整体状态分布怎样？')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-ai hover:bg-teal-50/50 text-sm text-text-secondary transition text-left">
+        <span class="chip-ico bg-blue-50">📊</span> 询价单整体状态分布怎样？
+      </button>
+      <button onclick="sendChat('哪些询价单快截止、有风险？')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-ai hover:bg-teal-50/50 text-sm text-text-secondary transition text-left">
+        <span class="chip-ico bg-red-50">⚠️</span> 哪些询价单快截止、有风险？
+      </button>
+      <button onclick="sendChat('哪家供应商经常不报价？')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-ai hover:bg-teal-50/50 text-sm text-text-secondary transition text-left">
+        <span class="chip-ico bg-purple-50">🤝</span> 哪家供应商经常不报价？
+      </button>
+      <button onclick="sendChat('哪些物料供应集中、单一来源？')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-ai hover:bg-teal-50/50 text-sm text-text-secondary transition text-left">
+        <span class="chip-ico bg-orange-50">📦</span> 哪些物料供应集中、单一来源？
+      </button>
+      <button onclick="sendChat('近期询价趋势、哪天截止高峰？')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-ai hover:bg-teal-50/50 text-sm text-text-secondary transition text-left">
+        <span class="chip-ico bg-cyan-50">📈</span> 近期询价趋势、哪天截止高峰？
+      </button>
+      <button onclick="sendChat('报价中的询价单有哪些？')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-ai hover:bg-teal-50/50 text-sm text-text-secondary transition text-left">
+        <span class="chip-ico bg-green-50">💬</span> 报价中的询价单有哪些？
+      </button>
+    </div>
+    <div id="chatLog" class="mt-5 space-y-3"></div>
+  </div>
+  <div class="flex-shrink-0 border-t border-border p-3 bg-white">
+    <div class="bg-gray-50 rounded-xl border border-border p-2 flex items-end gap-2">
+      <button class="text-text-tertiary hover:text-ai pb-1.5 flex-shrink-0" title="附件"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3 3 0 014.24 4.24l-9.2 9.19a1 1 0 01-1.41-1.41l8.49-8.49"/></svg></button>
+      <textarea id="chatInput" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}" placeholder="描述你的问题，或者跟我聊聊..." class="flex-1 bg-transparent resize-none outline-none text-sm py-1.5 leading-relaxed text-text-primary placeholder-text-tertiary"></textarea>
+      <button onclick="sendChat()" class="w-8 h-8 rounded-full ai-gradient text-white flex items-center justify-center hover:opacity-90 flex-shrink-0"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+    </div>
+  </div>
+</aside>
+
+<script>
+// ---------- Mock data ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+var rnd=mulberry32(20260718);
+function pick(a){return a[Math.floor(rnd()*a.length)];}
+function pad(n){return n<10?'0'+n:''+n;}
+var STATUSES=['草稿','报价中','比价中','核价中','已完成','已取消'];
+var STATUS_COUNTS={草稿:32,报价中:13,比价中:15,核价中:26,已完成:15,已取消:47};
+var TITLES=['气缸｜中国｜G1/8｜脚座型(LB)｜单作用｜6mm｜5mm｜个询价','得力丨圆珠笔丨S153询价','SMC丨气缸丨CJPB6-5-SMC询价','晨光丨打印纸丨APYVJF46询价','晨光 ｜ 打印纸 ｜ APN1Z002B询价','打印纸询价','公牛丨插线板丨GN-B3440询价','3M丨胶带丨600询价','联想丨显示器丨ThinkVision询价','华为丨交换机丨S5735询价'];
+var ORGS=['A001 香港立讯采购组','香港立讯采购组'];
+var FACTORIES=['01D1 立讯精密工业BU1-非保税联想工厂','0151 暂停使用(兴宁立讯BU1-非保税-叶塘)','立讯精密工业BU1-非保税联想工厂'];
+var CREATORS=['system','吴焕军','李采购','王敏'];
+
+// ===== 仿真供应商主数据（演示用，模拟已接入 MDM） =====
+var SUPPLIERS=[
+  {name:'深圳市精工精密制造有限公司', rate:0.85},
+  {name:'东莞市盈通电子科技有限公司', rate:0.42},
+  {name:'苏州华翔精密机械有限公司',   rate:0.91},
+  {name:'广州华联塑胶有限公司',       rate:0.33},
+  {name:'惠州德赛电池有限公司',       rate:0.67},
+  {name:'宁波舜宇光电有限公司',       rate:0.28},
+  {name:'成都天马微电子有限公司',     rate:0.74},
+  {name:'武汉光谷半导体有限公司',     rate:0.51},
+  {name:'天津中环电子元件厂',         rate:0.19},
+  {name:'中山市小榄镇五金制品厂',     rate:0.63}
+];
+// 物料 → 优选供应商池（用于演示"物料集中度 / 单一来源"）
+var MATERIAL_POOL={
+  '气缸':['深圳市精工精密制造有限公司','苏州华翔精密机械有限公司','东莞市盈通电子科技有限公司','天津中环电子元件厂'],
+  '圆珠笔':['广州华联塑胶有限公司','中山市小榄镇五金制品厂'],
+  '打印纸':['广州华联塑胶有限公司','惠州德赛电池有限公司','成都天马微电子有限公司'],
+  '插线板':['惠州德赛电池有限公司','东莞市盈通电子科技有限公司','中山市小榄镇五金制品厂'],
+  '胶带':['广州华联塑胶有限公司','中山市小榄镇五金制品厂','天津中环电子元件厂'],
+  '显示器':['成都天马微电子有限公司','宁波舜宇光电有限公司','武汉光谷半导体有限公司'],
+  '交换机':['成都天马微电子有限公司']
+};
+function materialOf(title){for(var k in MATERIAL_POOL){if(title.indexOf(k)>=0)return k;}return title.split(/[｜丨]/)[0].trim();}
+function sampleSuppliers(pool,n){var a=pool.slice(),r=[];for(var i=0;i<n&&a.length;i++){r.push(a.splice(Math.floor(rnd()*a.length),1)[0]);}return r;}
+
+var TODAY=new Date(2026,6,18);
+function fmt(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;}
+var DATA=[];var seq=0;
+function buildStatus(s,c){for(var i=0;i<c;i++){seq++;var create=addDays(TODAY,-Math.floor(rnd()*14)-1);create.setHours(Math.floor(rnd()*10)+8,Math.floor(rnd()*60),Math.floor(rnd()*60));var deadline=addDays(create,5+Math.floor(rnd()*8));var title=pick(TITLES);var mat=materialOf(title);var pool=MATERIAL_POOL[mat]||SUPPLIERS.map(function(x){return x.name;});var invitedCount=3+Math.floor(rnd()*8);var invitedSuppliers=sampleSuppliers(pool,Math.min(invitedCount,pool.length));var respondedSuppliers=[];invitedSuppliers.forEach(function(snm){var sup=SUPPLIERS.find(function(x){return x.name===snm;});var rate=sup?sup.rate:0.5;if(s==='草稿'){}else if(s==='已完成'){respondedSuppliers.push(snm);}else if(s==='已取消'){if(rnd()<rate*0.6)respondedSuppliers.push(snm);}else{if(rnd()<rate)respondedSuppliers.push(snm);}});var invited=invitedSuppliers.length;var supDone=respondedSuppliers.length;var mats=1+Math.floor(rnd()*8);var matDone;if(s==='草稿'){matDone=0;}else if(s==='报价中'){matDone=Math.floor(rnd()*mats);}else if(s==='比价中'){matDone=Math.min(mats,mats-1+Math.floor(rnd()*2>1?1:0));}else if(s==='核价中'){matDone=mats;}else if(s==='已完成'){matDone=mats;}else{matDone=Math.floor(rnd()*mats);}matDone=Math.min(matDone,mats);var isPublic=rnd()>0.1;var d=new Date(create);var prno='PR'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(10000+Math.floor(rnd()*90000));DATA.push({id:'RFQ2026'+pad(create.getMonth()+1)+pad(create.getDate())+pad(1000+seq),title:title,status:s,deadline:deadline,create:create,matDone:matDone,mats:mats,supDone:supDone,invited:invited,invitedSuppliers:invitedSuppliers,respondedSuppliers:respondedSuppliers,material:mat,isPublic:isPublic,org:pick(ORGS),factory:pick(FACTORIES),currency:'CNY',pr:prno,creator:pick(CREATORS)});}}
+STATUSES.forEach(function(s){buildStatus(s,STATUS_COUNTS[s]);});
+
+// ---------- Views ----------
+function showView(v){
+  document.getElementById('viewList').classList.toggle('hidden',v!=='list');
+  document.getElementById('tabList').className='px-4 h-full text-sm font-medium text-brand bg-white border-b-2 border-brand flex items-center gap-2';
+  document.getElementById('sideList').className='block h-8 px-3 rounded text-brand bg-blue-50';
+  var statusTabs=['全部','草稿','报价中','比价中','议价中','核价中','已完成','已取消'];
+  var statusCounts={全部:148,草稿:32,报价中:13,比价中:15,议价中:0,核价中:26,已完成:15,已取消:47};
+  var container=document.getElementById('statusTabs');
+  if(container){
+    var html='';
+    statusTabs.forEach(function(s){var c=statusCounts[s];html+='<button class="px-4 py-3 text-sm font-medium '+(s===listFilter?'text-brand bg-white border-b-2 border-brand':'text-text-secondary hover:text-text-primary border-b-2 border-transparent')+'" onclick="filterList(\''+s+'\')">'+s+' <span class="ml-1 text-xs '+(s===listFilter?'text-brand':'text-text-tertiary')+'">'+c+'</span></button>';});
+    container.innerHTML=html;
+  }
+}
+function statusColor(s){return s==='报价中'?'border-blue-200 bg-blue-50 text-brand':s==='核价中'?'border-orange-200 bg-orange-50 text-warning':s==='草稿'?'border-gray-200 bg-gray-100 text-text-secondary':s==='比价中'?'border-cyan-200 bg-cyan-50 text-cyan-600':s==='已完成'?'border-green-200 bg-green-50 text-success':'border-red-200 bg-red-50 text-error';}
+var listFilter='全部';
+function filterList(s){listFilter=s;renderList();showView('list');}
+function renderList(){var kw=(document.getElementById('listSearch').value||'').toLowerCase();var rows=DATA.filter(function(d){if(listFilter!=='全部'&&d.status!==listFilter)return false;if(kw&&(d.id.toLowerCase().indexOf(kw)<0&&d.title.toLowerCase().indexOf(kw)<0))return false;return true;}).sort(function(a,b){return b.create-a.create;});var html='';rows.slice(0,30).forEach(function(d){html+='<tr class="table-row"><td class="px-4 py-3 text-brand">'+d.id+'</td><td class="px-4 py-3 text-text-secondary max-w-[240px] truncate" title="'+d.title+'">'+d.title+'</td><td class="px-4 py-3"><span class="status-badge '+statusColor(d.status)+'">'+d.status+'</span></td><td class="px-4 py-3 text-text-secondary">'+fmt(d.deadline)+'</td><td class="px-4 py-3 text-text-secondary">'+d.matDone+'/'+d.mats+'</td><td class="px-4 py-3 text-text-secondary">'+d.supDone+'/'+d.invited+'</td><td class="px-4 py-3 text-text-secondary">'+d.invited+'</td></tr>';});document.getElementById('listBody').innerHTML=html;document.getElementById('listCount').textContent='共 '+rows.length+' 条'+(rows.length>30?'（显示前 30 条）':'');}
+
+// ---------- AI Drawer ----------
+function openDrawer(){document.getElementById('aiMask').classList.remove('opacity-0','pointer-events-none');document.getElementById('aiDrawer').classList.remove('translate-x-full');setTimeout(function(){document.getElementById('chatInput').focus();},320);}
+function closeDrawer(){document.getElementById('aiMask').classList.add('opacity-0','pointer-events-none');document.getElementById('aiDrawer').classList.add('translate-x-full');}
+
+// ---------- AI chat ----------
+function addMsg(role,html){var log=document.getElementById('chatLog');var wrap=document.createElement('div');wrap.className='flex '+(role==='user'?'justify-end':'');var bubble=document.createElement('div');bubble.className=role==='user'?'max-w-[85%] px-3 py-2 rounded-lg bg-ai text-white rounded-tr-sm':'w-full';bubble.innerHTML=html;wrap.appendChild(bubble);log.appendChild(wrap);var sc=document.getElementById('aiScroll');if(sc)sc.scrollTop=sc.scrollHeight;}
+// ---------- AI 回答可视化组件 ----------
+var SC_COLOR={'草稿':'#bfbfbf','报价中':'#1890ff','比价中':'#13c2c2','核价中':'#fa8c16','已完成':'#52c41a','已取消':'#ff4d4f'};
+function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+function aiCard(title,inner){return '<div class="ai-card">'+(title?'<h4>'+title+'</h4>':'')+inner+'</div>';}
+function barRow(nm,val,max,color,valTxt){var pct=max?Math.round(val/max*100):0;return '<div class="dist-row"><span class="nm">'+nm+'</span><span class="track"><span class="fill" style="width:'+pct+'%;background:'+color+'"></span></span><span class="val">'+valTxt+'</span></div>';}
+function vtable(rows,cols,rowClassFn){var h='<div class="overflow-x-auto rounded border border-border"><table class="text-xs text-left min-w-full"><thead class="bg-gray-100 text-text-secondary"><tr>';cols.forEach(function(c){h+='<th class="px-2 py-1.5 font-medium border-b border-border whitespace-nowrap">'+c+'</th>';});h+='</tr></thead><tbody class="divide-y divide-border">';rows.forEach(function(r){var rc=rowClassFn?rowClassFn(r):'';h+='<tr class="'+(rc||'')+'">';cols.forEach(function(c){h+='<td class="px-2 py-1.5 text-text-secondary align-middle">'+r[c]+'</td>';});h+='</tr>';});return h+'</tbody></table></div>';}
+function statusOverviewHTML(withMetrics){var maxc=Math.max.apply(null,STATUSES.map(function(s){return STATUS_COUNTS[s];}));var bars=STATUSES.map(function(s){var c=STATUS_COUNTS[s];return barRow(s,c,maxc,SC_COLOR[s],c+'条 · '+Math.round(c/DATA.length*100)+'%');}).join('');var inner=bars;if(withMetrics){var ti=0;DATA.forEach(function(d){ti+=d.invited;});var p=DATA.filter(function(d){return d.isPublic;}).length;inner+='<div class="ai-metric"><div class="m"><b>'+DATA.length+'</b><span>询价单总量</span></div><div class="m"><b>'+(ti/DATA.length).toFixed(1)+'</b><span>平均被邀供应商</span></div><div class="m"><b>'+Math.round(p/DATA.length*100)+'%</b><span>公开询价占比</span></div></div>';}return inner;}
+function trendChart(newArr,dlArr){
+  var W=372,H=132,pad=16,np=newArr.length-1;
+  var maxV=Math.max(1,Math.max.apply(null,newArr.concat(dlArr)));
+  function path(arr,color){var d=arr.map(function(v,i){var x=pad+(W-2*pad)*i/np;var y=H-pad-(H-2*pad)*v/maxV;return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}).join(' ');var dots=arr.map(function(v,i){var x=pad+(W-2*pad)*i/np;var y=H-pad-(H-2*pad)*v/maxV;return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2.2" fill="'+color+'"/>';}).join('');return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2"/>'+dots;}
+  var gl='';for(var g=0;g<=3;g++){var gy=pad+(H-2*pad)*g/3;gl+='<line x1="'+pad+'" y1="'+gy+'" x2="'+(W-pad)+'" y2="'+gy+'" stroke="#f0f0f0" stroke-width="1"/>';}
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;margin:2px 0 4px">'+gl+path(newArr,'#1890ff')+path(dlArr,'#ff4d4f')+'<text x="'+pad+'" y="'+(H-3)+'" font-size="9" fill="#8c8c8c">14天前</text><text x="'+(W-pad-30)+'" y="'+(H-3)+'" font-size="9" fill="#8c8c8c">今天→</text></svg>';
+}
+function respond(q){
+  q=(q||'').toLowerCase();
+  var byStatus=function(s){return DATA.filter(function(d){return d.status===s;}).sort(function(a,b){return b.create-a.create;});};
+  // SC-05 趋势与负荷
+  if(q.indexOf('趋势')>=0 || q.indexOf('截止高峰')>=0 || q.indexOf('产能')>=0){
+    var newSeries=[],dlSeries=[];
+    for(var i=13;i>=0;i--){var cd=addDays(TODAY,-i);var nc=0;DATA.forEach(function(r){if(sameDay(r.create,cd))nc++;});newSeries.push(nc);}
+    for(var j=0;j<=13;j++){var dd=addDays(TODAY,j);var ec=0;DATA.forEach(function(r){if(sameDay(r.deadline,dd))ec++;});dlSeries.push(ec);}
+    var newCnt=newSeries.reduce(function(a,b){return a+b;},0),dlCnt=dlSeries.reduce(function(a,b){return a+b;},0);
+    var pni=0,pn=newSeries[0];newSeries.forEach(function(v,i){if(v>pn){pn=v;pni=i;}});
+    var pdi=0,pd=dlSeries[0];dlSeries.forEach(function(v,i){if(v>pd){pd=v;pdi=i;}});
+    var pndDate=addDays(TODAY,-(13-pni));var pnd=pndDate.getMonth()+1+'/'+pndDate.getDate();
+    var pddDate=addDays(TODAY,pdi);var pdd=pddDate.getMonth()+1+'/'+pddDate.getDate();
+    return aiCard('📈 询价趋势与产能负荷（近14天新建 vs 未来14天截止）',
+      trendChart(newSeries,dlSeries)
+      + '<div class="ai-metric"><div class="m"><b>'+newCnt+'</b><span>近14天新建</span></div><div class="m"><b>'+dlCnt+'</b><span>未来14天截止</span></div><div class="m"><b>'+pnd+'</b><span>新建峰值</span></div><div class="m"><b>'+pdd+'</b><span>截止高峰</span></div></div>'
+      + '<div class="text-[11px] text-text-tertiary mt-2 leading-relaxed">蓝线＝每日新建量，红线＝每日截止量。可据此提前排程寻源人力、预判产能瓶颈。</div>');
+  }
+  // SC-02 风险预警
+  if(q.indexOf('风险')>=0||q.indexOf('截止')>=0||q.indexOf('快')>=0){
+    var risks=DATA.filter(function(d){if(d.status==='已完成'||d.status==='已取消')return false;var dl=Math.round((d.deadline-TODAY)/86400000);return dl<=3&&(d.invited>0&&d.supDone/d.invited<0.5);}).sort(function(a,b){return a.deadline-b.deadline;});
+    if(!risks.length)return aiCard('⚠️ 高风险询价单','当前没有「截止≤3天且供应商报价进度<50%」的高风险询价单，询价池整体健康。');
+    var urgentCnt=risks.filter(function(d){return Math.round((d.deadline-TODAY)/86400000)<=1;}).length;
+    var rows=risks.slice(0,8).map(function(d){var rem=Math.round((d.deadline-TODAY)/86400000);var rt=d.invited?Math.round(d.supDone/d.invited*100):0;return {编号:d.id,状态:d.status,截止:fmt(d.deadline).slice(0,10),进度:d.supDone+'/'+d.invited,响应率:rt+'%',剩余:(rem<=0?'今天':rem+'天')+(rem<=1?' ⚠':''),风险:rt<50?'高危':'关注'};});
+    var body=vtable(rows,['编号','状态','截止','进度','响应率','剩余'],function(r){var rm=parseInt(r.剩余);return (!rm||rm<=1)?'urgent':'';});
+    return aiCard('⚠️ 高风险询价单（截止≤3天且报价进度<50%）',
+      '<div class="ai-metric"><div class="m"><b>'+risks.length+'</b><span>高风险单数</span></div><div class="m"><b>'+urgentCnt+'</b><span>其中≤1天紧急</span></div></div>'+body
+      + '<div class="text-[11px] text-text-tertiary mt-2">红底行＝剩余 ≤1 天，建议优先跟催。</div>');
+  }
+  // 状态关键词 → 状态清单
+  var sm=STATUSES.find(function(s){return q.indexOf(s.toLowerCase())>=0;});
+  if(sm){
+    var list=byStatus(sm);
+    var rows=list.slice(0,8).map(function(d){var prog=d.invited?Math.round(d.supDone/d.invited*100):0;var color=prog<50?'#ff4d4f':(prog<80?'#fa8c16':'#52c41a');return {编号:d.id,标题:d.title.slice(0,10)+'…',进度:d.supDone+'/'+d.invited,响应率:'<span class="mini-bar"><span style="width:'+prog+'%;background:'+color+'"></span></span> '+prog+'%',截止:fmt(d.deadline).slice(0,10)};});
+    return aiCard('📋 状态「'+sm+'」询价单（共 '+list.length+' 条）', vtable(rows,['编号','标题','进度','响应率','截止']));
+  }
+  // SC-06 RFQ 详情
+  if(q.indexOf('rfq')>=0){var m=q.match(/rfq\d+/);if(m){var rec=DATA.find(function(d){return d.id.toLowerCase()===m[0];});if(rec){var sup=(rec.invitedSuppliers||[]).join('、');var rsp=(rec.respondedSuppliers||[]).join('、');var kv=[['标题',rec.title],['状态',rec.status],['截止',fmt(rec.deadline)],['物料报价',rec.matDone+'/'+rec.mats],['供应商报价',rec.supDone+'/'+rec.invited],['受邀供应商('+rec.invited+')',sup||'无'],['已报价',rsp||'无'],['是否公开',rec.isPublic?'公开':'非公开'],['采购组织',rec.org],['来源PR',rec.pr],['创建人',rec.creator]];var kvHTML=kv.map(function(p){return '<div class="kv"><span class="k">'+p[0]+'</span><span class="v" title="'+p[1]+'">'+p[1]+'</span></div>';}).join('');return aiCard('🔎 '+rec.id+' 详情', kvHTML);}return aiCard('🔎 未找到单据','没找到编号 '+m[0].toUpperCase()+' 的询价单，请确认编号格式（如 RFQ202607170001）。');}}
+  // 公开占比
+  if(q.indexOf('公开')>=0){var p=DATA.filter(function(d){return d.isPublic;}).length;return aiCard('🌐 公开询价占比','<div class="ai-metric"><div class="m"><b>'+Math.round(p/DATA.length*100)+'%</b><span>公开询价</span></div><div class="m"><b>'+p+'</b><span>公开单数</span></div><div class="m"><b>'+(DATA.length-p)+'</b><span>非公开单数</span></div></div>');}
+  // SC-03 供应商响应
+  if(q.indexOf('供应商')>=0 && (q.indexOf('响应')>=0||q.indexOf('不报')>=0||q.indexOf('报价')>=0)){
+    var inv={},resp={};SUPPLIERS.forEach(function(s){inv[s.name]=0;resp[s.name]=0;});
+    DATA.forEach(function(d){(d.invitedSuppliers||[]).forEach(function(n){inv[n]=(inv[n]||0)+1;});(d.respondedSuppliers||[]).forEach(function(n){resp[n]=(resp[n]||0)+1;});});
+    var arr=SUPPLIERS.map(function(s){var iv=inv[s.name]||0,rp=resp[s.name]||0;return {name:s.name,inv:iv,resp:rp,rate:iv?Math.round(rp/iv*100):0};}).sort(function(a,b){return a.rate-b.rate;});
+    var low=arr.filter(function(x){return x.inv>0&&x.rate<50;}).slice(0,5);
+    var totalInv=0,totalResp=0;arr.forEach(function(x){totalInv+=x.inv;totalResp+=x.resp;});
+    var overallRate=totalInv?Math.round(totalResp/totalInv*100):0;
+    var cards=low.map(function(x){var color=x.rate<30?'#ff4d4f':(x.rate<50?'#fa8c16':'#52c41a');return '<div class="resp-card low"><div class="flex items-center justify-between"><span class="text-xs text-text-primary font-medium">'+x.name+'</span><span class="text-xs font-semibold" style="color:'+color+'">'+x.rate+'%</span></div><div class="flex items-center gap-2 mt-1.5"><span class="mini-bar"><span style="width:'+x.rate+'%;background:'+color+'"></span></span><span class="text-[11px] text-text-tertiary">受邀 '+x.inv+' · 已报 '+x.resp+'</span></div></div>';}).join('');
+    var metrics='<div class="ai-metric"><div class="m"><b>'+overallRate+'%</b><span>整体平均响应率</span></div><div class="m"><b>'+totalInv+'</b><span>累计受邀家次</span></div><div class="m"><b>'+totalResp+'</b><span>实际报价家次</span></div></div>';
+    return aiCard('🤝 供应商响应分析（低响应预警）', metrics + (low.length?('<div class="text-[11px] text-text-tertiary mt-1 mb-1">低响应供应商（响应率&lt;50%，建议激活/替换）：</div>'+cards):'<div class="text-xs text-text-tertiary mt-2">当前样本内无响应率低于 50% 的供应商。</div>'));
+  }
+  // SC-04 物料集中度
+  if(q.indexOf('物料')>=0 && (q.indexOf('集中')>=0||q.indexOf('单一')>=0||q.indexOf('来源')>=0)){
+    var matInv={},matSup={};DATA.forEach(function(d){var m=d.material;matInv[m]=(matInv[m]||0)+1;if(!matSup[m])matSup[m]={};(d.invitedSuppliers||[]).forEach(function(n){matSup[m][n]=1;});});
+    var arr=Object.keys(matInv).map(function(m){var supN=Object.keys(matSup[m]).length;return {m:m,inq:matInv[m],supN:supN,flag:supN<=1?'单一来源':(supN<=2?'高度集中':'正常')};}).sort(function(a,b){return b.inq-a.inq;});
+    var single=arr.filter(function(x){return x.flag==='单一来源';}).length;var conc=arr.filter(function(x){return x.flag==='高度集中';}).length;
+    var rows=arr.slice(0,6).map(function(x){var tag=x.flag==='单一来源'?'<span class="tag tag-red">单一来源</span>':x.flag==='高度集中'?'<span class="tag tag-orange">高度集中</span>':'<span class="tag tag-green">正常</span>';return {物料:x.m,询价单数:x.inq,涉及供应商:x.supN,供应风险:tag};});
+    return aiCard('📦 物料集中度与供应风险', '<div class="ai-metric"><div class="m"><b>'+single+'</b><span>单一来源</span></div><div class="m"><b>'+conc+'</b><span>高度集中</span></div><div class="m"><b>'+arr.length+'</b><span>覆盖物料</span></div></div>'+vtable(rows,['物料','询价单数','涉及供应商','供应风险']));
+  }
+  // SC-01 汇总 / 状态分布
+  if(q.indexOf('汇总')>=0||q.indexOf('状态分布')>=0||(q.indexOf('供应商')>=0&&q.indexOf('平均')>=0)){
+    return aiCard('📊 询价单状态分布（整体健康度）', statusOverviewHTML(true));
+  }
+  // 总数 / 多少
+  if(q.indexOf('多少')>=0||q.indexOf('总数')>=0||q.indexOf('一共')>=0||q.indexOf('统计')>=0){
+    return aiCard('📊 询价单总量与状态分布', statusOverviewHTML(false));
+  }
+  // 兜底
+  return aiCard('💡 我能帮你做这些分析', '<div class="text-xs text-text-secondary leading-relaxed">我可以覆盖 6 类策略场景，试试这样问：<br>① <b>状态分布</b>：询价单整体状态分布怎样<br>② <b>风险预警</b>：哪些询价单快截止、有风险<br>③ <b>供应商响应</b>：哪家供应商经常不报价<br>④ <b>物料集中度</b>：哪些物料供应集中、单一来源<br>⑤ <b>趋势</b>：近期询价趋势、哪天截止高峰<br>⑥ <b>即时查询</b>：报价中的有哪些 / RFQ…详情 / 公开询价占比多少</div>');
+}
+function sendChat(preset){var inp=document.getElementById('chatInput');var v=(preset!=null?preset:inp.value).trim();if(!v)return;addMsg('user',v.replace(/</g,'&lt;'));if(preset==null)inp.value='';setTimeout(function(){addMsg('ai',respond(v));},300);}
+
+renderList();showView('list');
+</script>
+
+<!-- ===================== 需求文档弹窗（点击顶部「需求文档」打开） ===================== -->
+<div class="doc-modal-overlay" id="docOverlay">
+  <div class="doc-modal">
+    <div class="doc-modal-header">
+      <div>
+        <div class="title">AI采购助手 — 需求文档</div>
+        <div class="subtitle">询价单策略分析 · 原型 V1.8</div>
+      </div>
+      <button class="doc-close" onclick="closeDoc()" title="关闭">✕</button>
+    </div>
+    <div class="doc-modal-main">
+      <nav class="doc-toc" id="docToc">
+        <div class="doc-toc-label">目录</div>
+        <a class="doc-toc-item" data-i="0">01 — 页面目标</a>
+        <a class="doc-toc-item" data-i="1">02 — 用户故事</a>
+        <a class="doc-toc-item" data-i="2">03 — 信息架构</a>
+        <a class="doc-toc-item" data-i="3">04 — 策略分析业务场景</a>
+        <a class="doc-toc-item" data-i="4">05 — 提示词、Skill与Tool</a>
+        <a class="doc-toc-item" data-i="5">06 — 状态规则</a>
+        <a class="doc-toc-item" data-i="6">07 — 异常处理</a>
+        <a class="doc-toc-item" data-i="7">08 — 验收标准</a>
+        <a class="doc-toc-item" data-i="8">09 — 评测集合</a>
+      </nav>
+      <div class="doc-modal-body" id="docBody">
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">01 — 页面目标</h3>
+          <h4 class="doc-sub">问题背景</h4>
+          <p class="doc-p">寻源专员 / 采购员在「询价单」页面面对大量单据时，缺乏对询价池的全局视角，难以第一时间发现进度滞后的单据、供应商响应不足的风险，以及供应商 / 物料维度的集中度问题；逐单翻表效率低，缺少数据驱动的跟催与策略依据。</p>
+          <h4 class="doc-sub">核心价值</h4>
+          <p class="doc-p">在询价单页面直接嵌入 AI 分析能力，对询价单池做实时智能解读（状态分布、风险预警、趋势、供应商 / 物料维度）并支持自然语言查询，帮助采购员更快掌握询价健康度、识别风险、做出策略决策，无需离开当前页面。</p>
+          <h4 class="doc-sub">成功指标</h4>
+          <p class="doc-p">(1) AI 分析结论与人工经验判断方向一致率 ≥ 80%；(2) 分析响应时间 &lt; 3 秒；(3) 用户无需离开询价单页面即可完成分析与查询。</p>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">02 — 用户故事</h3>
+          <table class="doc-table">
+            <thead><tr><th style="width:120px">角色</th><th style="width:160px">职责</th><th>核心关注</th><th>使用场景</th></tr></thead>
+            <tbody>
+              <tr><td>寻源专员 / 采购员</td><td>发起询价、跟进报价、推动比价核价</td><td>哪些单子快逾期、谁不报价、整体健康度</td><td>日常询价跟催、周度询价盘点、临时查询某单</td></tr>
+            </tbody>
+          </table>
+          <p class="doc-p">用户故事：作为寻源专员，我希望在询价单页面一眼看到 AI 能帮什么（全局分析入口），并能用自然语言询问任意单据，以便快速掌握询价健康度、识别将要逾期的单据与响应不足的供应商，减少逐单翻表的时间成本，降低遗漏风险的可能性。</p>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">03 — 信息架构</h3>
+          <h4 class="doc-sub">入口位置</h4>
+          <p class="doc-p">顶部 Header 栏右侧：「需求文档」白底按钮（左） + 「AI助手」青色渐变胶囊按钮（右）；左侧菜单含「AI助手」项（机器人图标）。</p>
+          <h4 class="doc-sub">AI 入口（克制，不抢列表主角）</h4>
+          <p class="doc-p">「询价单」页面主内容区是询价单表格（工作列表页，列表为主角）。AI 入口保持轻量：顶部 Header 右侧「AI助手」青色胶囊按钮 + 左侧菜单「AI助手」项，二者均唤起右侧 420px 抽屉对话。不在列表上方放置大块 AI 主卡，避免喧宾夺主。</p>
+          <h4 class="doc-sub">右侧抽屉（对话区）</h4>
+          <p class="doc-p">点击 Header / 左侧「AI助手」即滑出 420px 抽屉，含圆形头像、问候语、6 个<b>自然语言型</b>快捷场景（覆盖 SC-01~06）与底部输入框。抽屉采用纯遮罩（overlay, rgba(0,0,0,0.25)）覆盖模式，打开时主内容不位移。</p>
+          <h4 class="doc-sub">询价单列表（主数据区）</h4>
+          <p class="doc-p">AI 主卡下方为询价单表格：状态分组页签（全部/草稿/报价中/比价中/核价中/已完成/已取消）、关键字搜索、列表展示编号/标题/状态/截止/报价进度/被邀供应商数。</p>
+          <h4 class="doc-sub">技术方案</h4>
+          <p class="doc-p">AI 智能助手为独立前端原型，当前演示阶段将询价单数据以 Mock JSON 直接写入同一 HTML 中，由前端规则引擎完成分析与意图路由（未来可替换为 LLM API + 真实 ERP/MDM 数据源）。</p>
+          <h4 class="doc-sub">核心功能特性（6 类策略场景）</h4>
+          <ul class="doc-ul">
+            <li>SC-01 状态分布：6 状态计数 + 占比，整体健康度。</li>
+            <li>SC-02 风险预警：截止 ≤3 天且供应商报价进度 &lt; 50% 的高优先跟催清单。</li>
+            <li>SC-03 供应商响应：平均响应率、低响应供应商提示。</li>
+            <li>SC-04 物料集中度：单一来源 / 高度集中物料识别。</li>
+            <li>SC-05 趋势与负荷：近 14 天新建 vs 未来截止双折线。</li>
+            <li>SC-06 对话式即时查询：状态 / 风险 / 单条详情 / 汇总 / 公开占比的自然语言问答。</li>
+          </ul>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">04 — 策略分析业务场景</h3>
+          <p class="doc-p">「询价单」的策略分析，目标是把分散的单据转化为<b>可执行的采购策略信号</b>。共梳理 <b>6 个策略分析业务场景</b>，覆盖「健康度 → 风险 → 供应商 → 物料 → 趋势 → 即时查询」全链路：</p>
+          <table class="doc-table">
+            <thead><tr><th style="width:60px">编号</th><th style="width:170px">场景</th><th>业务问题（采购员在想什么）</th><th style="width:170px">支撑的决策</th></tr></thead>
+            <tbody>
+              <tr><td>SC-01</td><td><span class="tag tag-blue">健康度总览</span><br>状态分布分析</td><td>当前询价单池整体是否健康？是否大量积压在草稿 / 已取消？</td><td>询价 pipeline 节奏管理、需求澄清推进</td></tr>
+              <tr><td>SC-02</td><td><span class="tag tag-red">风险预警</span><br>逾期与临近截止</td><td>哪些单子即将到期却还没收到足够报价？哪些已经逾期？</td><td>跟催优先级分配、避免单据作废</td></tr>
+              <tr><td>SC-03</td><td><span class="tag tag-purple">供应商响应</span><br>行为分析</td><td>被邀请的供应商里，谁经常不报价？整体响应率如何？</td><td>供应商池激活 / 淘汰、确保有效报价数</td></tr>
+              <tr><td>SC-04</td><td><span class="tag tag-orange">物料集中度</span><br>供应风险分析</td><td>哪些物料的询价高度集中在少数供应商？是否单一来源？</td><td>引入备选供应商、分散供应风险</td></tr>
+              <tr><td>SC-05</td><td><span class="tag tag-green">趋势与负荷</span><br>新建 & 截止趋势</td><td>近期新建是否突增？未来哪几天是截止高峰？人力是否瓶颈？</td><td>寻源人力排程、产能瓶颈预判</td></tr>
+              <tr><td>SC-06</td><td><span class="tag tag-blue">对话式查询</span><br>即时决策支持</td><td>采购员想即时知道"报价中的有哪些""RFQxxx 详情"而不翻表</td><td>即时决策、减少页面跳转</td></tr>
+            </tbody>
+          </table>
+
+          <h4 class="doc-sub">SC-01　询价健康度总览（状态分布分析）</h4>
+          <ul class="doc-ul">
+            <li><b>业务问题</b>：询价单池整体是否健康？草稿积压、已取消占比是否过高？</li>
+            <li><b>触发方式</b>：抽屉快捷场景"询价单汇总分析"；对话"询价单整体状态分布怎样"。</li>
+            <li><b>分析逻辑</b>：按状态分组计数（草稿 / 报价中 / 比价中 / 核价中 / 已完成 / 已取消），计算各状态占比、草稿积压率、已取消率。</li>
+            <li><b>输出</b>：6 状态计数 + 占比 + 关键指标（平均被邀供应商数、公开询价占比）。</li>
+            <li><b>关联决策</b>：草稿占比高 → 推动业务及时完善并提交；已取消率高 → 排查供应商响应或需求澄清问题。</li>
+          </ul>
+          <h4 class="doc-sub">SC-02　逾期与临近截止风险预警</h4>
+          <ul class="doc-ul">
+            <li><b>业务问题</b>：哪些询价单即将到期但还没收到足够报价？哪些已逾期？</li>
+            <li><b>触发方式</b>：抽屉快捷场景"风险预警清单"；对话"哪些询价单快截止、有风险"。</li>
+            <li><b>分析逻辑</b>：筛选「截止 ≤ 3 天 且 供应商报价进度 &lt; 50% 且 状态非终态」的单据，按剩余天数升序。</li>
+            <li><b>输出</b>：风险清单表（编号 / 状态 / 截止 / 进度 / 剩余天数），剩余 ≤ 1 天标红高亮。</li>
+            <li><b>关联决策</b>：生成跟催优先级清单，分配给对应寻源专员催促供应商报价，避免单据过期作废。</li>
+          </ul>
+          <h4 class="doc-sub">SC-03　供应商响应行为分析</h4>
+          <ul class="doc-ul">
+            <li><b>业务问题</b>：被邀请的供应商里，谁经常不报价？谁报价积极？整体响应率如何？</li>
+            <li><b>触发方式</b>：抽屉快捷场景"供应商响应分析"；对话"哪家供应商经常不报价"。</li>
+            <li><b>分析逻辑</b>：按供应商聚合 被邀次数、实际报价数、响应率 = 报价 / 被邀、平均报价水平、入选率。</li>
+            <li><b>输出</b>：供应商响应排行（高 / 低响应），低响应供应商警示。</li>
+            <li><b>关联决策</b>：对长期低响应供应商激活 / 淘汰；优化供应商池；对关键物料确保 ≥ N 家有效报价。</li>
+          </ul>
+          <h4 class="doc-sub">SC-04　物料集中度与供应风险分析</h4>
+          <ul class="doc-ul">
+            <li><b>业务问题</b>：哪些物料的询价高度集中在少数供应商？是否存在单一来源风险？</li>
+            <li><b>触发方式</b>：抽屉快捷场景"物料集中度分析"；对话"哪些物料供应集中、单一来源"。</li>
+            <li><b>分析逻辑</b>：按物料聚合 询价次数、涉及供应商数、报价分布；识别「涉及供应商数 = 1」或「报价高度集中」的物料。</li>
+            <li><b>输出</b>：物料维度表（询价次数 / 供应商数 / 价格区间）+ 单一来源警示。</li>
+            <li><b>关联决策</b>：对单一来源物料推动引入备选供应商，分散供应风险。</li>
+          </ul>
+          <h4 class="doc-sub">SC-05　询价趋势与产能负荷分析</h4>
+          <ul class="doc-ul">
+            <li><b>业务问题</b>：近期新建询价是否突增？未来哪几天是截止高峰？人力 / 产能是否瓶颈？</li>
+            <li><b>触发方式</b>：对话"近期询价趋势、哪天截止高峰"。</li>
+            <li><b>分析逻辑</b>：近 14 天每日新建量 vs 未来截止量 双折线对比。</li>
+            <li><b>输出</b>：双折线趋势图 + 峰值标注。</li>
+            <li><b>关联决策</b>：截止高峰前提前排程寻源人力；新建突增时排查批量需求或异常。</li>
+          </ul>
+          <h4 class="doc-sub">SC-06　AI 对话式即时查询</h4>
+          <ul class="doc-ul">
+            <li><b>业务问题</b>：采购员想即时知道"报价中的有哪些""RFQxxx 详情""公开询价占比"而不翻表。</li>
+            <li><b>触发方式</b>：右侧 AI 抽屉，输入自然语言。</li>
+            <li><b>分析逻辑</b>：意图路由（状态查询 / 风险 / 单条详情 / 汇总 / 公开占比）→ 前端规则引擎检索 Mock 数据。</li>
+            <li><b>输出</b>：文字 + 表格回复，支持连续追问。</li>
+            <li><b>关联决策</b>：即时决策支持，减少页面跳转与人工筛选。</li>
+          </ul>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">05 — 提示词、Skill与Tool设计</h3>
+          <p class="doc-p">原型阶段采用「1 个全局调度 + 5 类查询意图」的轻量架构：全局调度负责意图识别与编排，各意图由前端规则引擎（Skill）执行，Tool 提供 Mock 数据检索。</p>
+          <h4 class="doc-sub">▍ 全局调度 Prompt（意图路由器）</h4>
+          <p class="doc-p">你是「立讯 AI 采购助手」的意图路由器。把用户一句话精确分类到唯一意图：状态查询、风险预警、单条详情、总量汇总、公开占比；非上述意图时引导用户用示例提问。不确定时不编造数据，明确说明"当前数据不足以判断"。</p>
+          <h4 class="doc-sub">▍ 查询意图（Skill）</h4>
+          <ul class="doc-ul">
+            <li><b>状态查询 Skill</b>：识别状态关键词（草稿/报价中/比价中/核价中/已完成/已取消），返回该状态单据清单与计数。</li>
+            <li><b>风险预警 Skill</b>：计算截止剩余天数与报价进度，返回高风险清单。</li>
+            <li><b>单条详情 Skill</b>：解析 RFQ 编号，返回该单据全字段。</li>
+            <li><b>总量汇总 Skill</b>：返回总量、状态分布、平均被邀供应商数、公开占比。</li>
+            <li><b>公开占比 Skill</b>：返回公开 / 非公开询价占比。</li>
+          </ul>
+          <h4 class="doc-sub">▍ Tool（原子能力）</h4>
+          <ul class="doc-ul">
+            <li><b>query_inquiries</b>：按状态 / 关键词 / 编号检索询价单 Mock 数据。</li>
+            <li><b>calc_risk</b>：基于截止时间与报价进度计算风险等级。</li>
+            <li><b>aggregate</b>：按状态 / 供应商 / 物料维度聚合统计。</li>
+          </ul>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">06 — 状态规则</h3>
+          <h4 class="doc-sub">询价单状态定义</h4>
+          <table class="doc-table">
+            <thead><tr><th style="width:110px">状态</th><th>含义</th><th style="width:120px">是否终态</th></tr></thead>
+            <tbody>
+              <tr><td>草稿</td><td>单据创建但未提交 / 未正式发起</td><td>否</td></tr>
+              <tr><td>报价中</td><td>已发给供应商，等待报价</td><td>否</td></tr>
+              <tr><td>比价中</td><td>已收齐报价，进行比价</td><td>否</td></tr>
+              <tr><td>核价中</td><td>比价完成，进入核价审批</td><td>否</td></tr>
+              <tr><td>已完成</td><td>核价通过，流程结束</td><td>是</td></tr>
+              <tr><td>已取消</td><td>单据作废</td><td>是</td></tr>
+            </tbody>
+          </table>
+          <h4 class="doc-sub">风险判定阈值</h4>
+          <ul class="doc-ul">
+            <li><b>高风险</b>：剩余天数 ≤ 3 且 供应商报价进度 &lt; 50%（且状态非终态）。</li>
+            <li><b>剩余天数</b> = 截止时间 − 当前日期；≤ 1 天额外标红。</li>
+            <li><b>响应率</b> = 实际报价供应商数 / 被邀供应商数；&lt; 50% 视为低响应警示。</li>
+          </ul>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">07 — 异常处理</h3>
+          <ul class="doc-ul">
+            <li>未检测到询价单数据 → 提示"当前没有询价单数据"。</li>
+            <li>某状态下无单据 → 该状态卡显示 0，不报错。</li>
+            <li>风险清单为空 → 显示"当前无高风险询价单"。</li>
+            <li>对话无法识别意图 → 返回可用问法引导，不编造数据。</li>
+            <li>自然语言查不到编号 → 提示未找到，并给出示例格式。</li>
+          </ul>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">08 — 验收标准</h3>
+          <table class="doc-table">
+            <thead><tr><th style="width:70px">编号</th><th style="width:170px">验收项</th><th>通过标准</th></tr></thead>
+            <tbody>
+              <tr><td>AC-01</td><td>Header 入口可见</td><td>「需求文档」「AI助手」按钮始终可见于 Header 栏右上角</td></tr>
+              <tr><td>AC-02</td><td>AI 入口唤起抽屉</td><td>点击顶部或左侧「AI助手」→ 右侧 420px 抽屉滑出，遮罩覆盖且不推挤主内容</td></tr>
+              <tr><td>AC-03</td><td>对话面板滑出</td><td>点击 AI助手（或抽屉快捷场景/输入），右侧 420px 抽屉平滑滑出，遮罩覆盖且不推挤主内容</td></tr>
+              <tr><td>AC-04</td><td>状态分布可查</td><td>对话"询价单整体状态分布怎样"返回 6 状态计数与占比，合计 = 总量</td></tr>
+              <tr><td>AC-05</td><td>风险预警准确</td><td>对话"哪些快截止有风险"返回截止 ≤ 3 天且进度 &lt; 50% 的单据，按剩余天数升序；≤ 1 天标红</td></tr>
+              <tr><td>AC-06</td><td>维度分析正确</td><td>对话"哪家供应商不报价""哪些物料单一来源"返回响应率 / 物料集中度（与数据一致）</td></tr>
+              <tr><td>AC-07</td><td>对话意图路由</td><td>状态 / 风险 / 详情 / 汇总 / 公开占比 五类意图均可正确识别</td></tr>
+              <tr><td>AC-08</td><td>对话返回表格</td><td>查询结果以文字 + 表格呈现，支持连续追问</td></tr>
+              <tr><td>AC-09</td><td>分析速度</td><td>点击快捷场景到首条建议出现 &lt; 1.5 秒</td></tr>
+              <tr><td>AC-10</td><td>面板可关闭</td><td>关闭按钮与点击遮罩均可关闭抽屉</td></tr>
+              <tr><td>AC-11</td><td>需求文档入口</td><td>右上角「需求文档」按钮点击弹出本文档</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="doc-sec">
+          <h3 class="doc-chapter">09 — 评测集合</h3>
+          <table class="doc-table">
+            <thead><tr><th style="width:70px">编号</th><th style="width:200px">评测用例</th><th>预期结果</th></tr></thead>
+            <tbody>
+              <tr><td>TC-01</td><td>点击「AI助手」</td><td>右侧抽屉滑出，遮罩出现，问候语"Hi~我是立讯AI助手"</td></tr>
+              <tr><td>TC-02</td><td>抽屉快捷场景"报价中的有哪些" / 抽屉"报价中的询价单有哪些？"</td><td>返回"报价中 13 条"及清单表格</td></tr>
+              <tr><td>TC-03</td><td>对话输入"哪些快截止有风险"</td><td>返回高风险清单（截止≤3天且进度&lt;50%）</td></tr>
+              <tr><td>TC-04</td><td>对话输入"RFQ202607170001 详情"</td><td>返回该单据全字段</td></tr>
+              <tr><td>TC-05</td><td>对话输入"公开询价占比多少"</td><td>返回公开占比百分比及公开 / 非公开数量</td></tr>
+              <tr><td>TC-06</td><td>点击遮罩关闭</td><td>抽屉收起，主内容恢复可交互</td></tr>
+            </tbody>
+          </table>
+          <p class="doc-note">以上需求基于当前页面数据自动生成，仅供参考，最终决策请结合业务实际情况。</p>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== 需求文档弹窗控制 + 目录滚动联动 =====
+  function openDoc(){ document.getElementById('docOverlay').classList.add('show'); }
+  function closeDoc(){ document.getElementById('docOverlay').classList.remove('show'); }
+  (function(){
+    var overlay = document.getElementById('docOverlay');
+    var body    = document.getElementById('docBody');
+    var tocItems= [...document.querySelectorAll('#docToc .doc-toc-item')];
+    var sections= [...document.querySelectorAll('#docBody .doc-sec')];
+    function setActive(i){ tocItems.forEach(function(a,idx){ a.classList.toggle('active', idx===i); }); }
+    function scrollToIndex(i){
+      var sec = sections[i];
+      var top = sec.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 8;
+      body.scrollTo({ top: top, behavior:'smooth' });
+      setActive(i);
+    }
+    tocItems.forEach(function(a){ a.addEventListener('click', function(){ scrollToIndex(+a.dataset.i); }); });
+    // 点击遮罩空白处关闭
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) closeDoc(); });
+    // scroll-spy
+    var ticking=false;
+    body.addEventListener('scroll', function(){
+      if(ticking) return; ticking=true;
+      requestAnimationFrame(function(){
+        var active=0;
+        if(body.scrollTop + body.clientHeight >= body.scrollHeight - 4){ active = sections.length-1; }
+        else { var pos = body.scrollTop + 90; sections.forEach(function(sec,i){ if(sec.offsetTop <= pos) active=i; }); }
+        setActive(active); ticking=false;
+      });
+    });
+    setActive(0);
+  })();
+</script>
+</body>
+</html>
